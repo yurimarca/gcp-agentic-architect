@@ -1,2 +1,5 @@
 resources/
 agy-game/.firebase/
+agy-game/firebase
+*-debug.log
+node_modules/

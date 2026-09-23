@@ -13,6 +13,19 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
 
+    // Leaderboard high scores (public read, validated anonymous-auth create)
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name', 'score', 'timestamp', 'uid'])
+        && request.resource.data.name is string
+        && request.resource.data.name.matches('^[A-Z]{3}$')
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.timestamp == request.time;
+    }
+
     // General stats / logs
     match /logs/{logId} {
       allow read: if true;

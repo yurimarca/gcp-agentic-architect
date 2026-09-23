@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VOYAGER: Starcatcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase Reserved URLs (Auto-Initialized) -->
+  <script defer src="/__/firebase/12.8.0/firebase-app-compat.js"></script>
+  <script defer src="/__/firebase/12.8.0/firebase-auth-compat.js"></script>
+  <script defer src="/__/firebase/12.8.0/firebase-firestore-compat.js"></script>
+  <script defer src="/__/firebase/init.js"></script>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="game-canvas" width="800" height="600"></canvas>
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen" class="overlay">
+      <h1 class="game-title">VOYAGER</h1>
+      <div class="subtitle">STARCATCHER</div>
+
+      <div class="narrative-box">
+        <p>Astronaut 311-C,</p>
+        <p>As humanity's best pilot, you have been selected for a crucial, top-secret mission: to find extraterrestrial life.</p>
+        <p>To do this, you must pilot your spacecraft between the stars of the 12 Zodiac constellations, as they appear. With each new constellation, you will have less time to connect the points. You must connect all of the constellations within the time limit to discover our intergalactic friends.</p>
+        <p>Use your arrow keys to move the spacecraft. Press SHIFT to speed up and Z to slow down.</p>
+        <p>Good luck, and bon voyage!</p>
+      </div>
+
+      <button id="btn-start" class="arcade-btn">LAUNCH MISSION</button>
+    </div>
+
+    <!-- Fail Screen Overlay -->
+    <div id="fail-screen" class="overlay" style="display: none;">
+      <h1 class="screen-title fail-title">MISSION FAILED</h1>
+
+      <div class="narrative-box">
+        <p>You have failed your mission, Astronaut 311-A. Humanity remains alone among the stars. Unless you choose to try again...</p>
+      </div>
+
+      <button id="btn-retry" class="arcade-btn">TRY AGAIN</button>
+    </div>
+
+    <!-- Mission Success (Win) Screen Overlay -->
+    <div id="win-screen" class="overlay" style="display: none;">
+      <h1 class="screen-title win-title">MISSION SUCCESS</h1>
+
+      <div class="narrative-box win-narrative">
+        <p>Hello, traveler. I am Zarg 966-Z. Welcome to Zargaborg!</p>
+        
+        <div class="alien-container">
+          <svg class="alien-svg" viewBox="0 0 200 200" width="160" height="160">
+            <defs>
+              <radialGradient id="alienGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#00ffff" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#ff007f" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="alienBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#a100ff"/>
+                <stop offset="50%" stop-color="#00ffff"/>
+                <stop offset="100%" stop-color="#ff007f"/>
+              </linearGradient>
+              <linearGradient id="eyeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffe600"/>
+                <stop offset="100%" stop-color="#ff0055"/>
+              </linearGradient>
+            </defs>
+            <!-- Outer Glow -->
+            <circle cx="100" cy="100" r="90" fill="url(#alienGlow)" />
+            <!-- Helmet Glass Dome -->
+            <ellipse cx="100" cy="95" rx="75" ry="70" fill="rgba(102, 252, 241, 0.15)" stroke="#66fcf1" stroke-width="3"/>
+            <!-- Alien Body / Head -->
+            <path d="M 60,130 C 40,80 60,35 100,35 C 140,35 160,80 140,130 C 130,150 70,150 60,130 Z" fill="url(#alienBody)" stroke="#ffffff" stroke-width="2"/>
+            <!-- Antennae -->
+            <line x1="75" y1="40" x2="55" y2="15" stroke="#00ffff" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="55" cy="15" r="7" fill="#ffe600"/>
+            <line x1="125" y1="40" x2="145" y2="15" stroke="#00ffff" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="145" cy="15" r="7" fill="#ffe600"/>
+            <line x1="100" y1="35" x2="100" y2="10" stroke="#ff007f" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="100" cy="10" r="8" fill="#00ffff"/>
+            <!-- Central Big Eye -->
+            <circle cx="100" cy="70" r="22" fill="#ffffff" stroke="#1f2833" stroke-width="2"/>
+            <circle cx="100" cy="70" r="14" fill="url(#eyeGradient)"/>
+            <circle cx="100" cy="70" r="6" fill="#000000"/>
+            <circle cx="95" cy="65" r="3" fill="#ffffff"/>
+            <!-- Side Eye Left -->
+            <circle cx="68" cy="82" r="12" fill="#ffffff"/>
+            <circle cx="68" cy="82" r="7" fill="#00ffff"/>
+            <circle cx="68" cy="82" r="3" fill="#000"/>
+            <!-- Side Eye Right -->
+            <circle cx="132" cy="82" r="12" fill="#ffffff"/>
+            <circle cx="132" cy="82" r="7" fill="#00ffff"/>
+            <circle cx="132" cy="82" r="3" fill="#000"/>
+            <!-- Cute Quirky Smile -->
+            <path d="M 80,110 Q 100,130 120,110" fill="none" stroke="#ffe600" stroke-width="4" stroke-linecap="round"/>
+            <!-- Cheeks -->
+            <circle cx="72" cy="108" r="6" fill="#ff007f" opacity="0.6"/>
+            <circle cx="128" cy="108" r="6" fill="#ff007f" opacity="0.6"/>
+            <!-- Tentacle Arms Waving -->
+            <path d="M 50,120 Q 30,130 20,110 Q 15,100 25,95" fill="none" stroke="#a100ff" stroke-width="6" stroke-linecap="round"/>
+            <path d="M 150,120 Q 170,130 180,110 Q 185,100 175,95" fill="none" stroke="#a100ff" stroke-width="6" stroke-linecap="round"/>
+            <!-- Space Juice Cup -->
+            <rect x="168" y="85" width="16" height="22" rx="3" fill="#ffe600"/>
+            <line x1="176" y1="85" x2="182" y2="75" stroke="#ff007f" stroke-width="3"/>
+          </svg>
+        </div>
+
+        <p>I just pumped some fresh oxygen into my biosphere! So come on in, kick your boots off, and tell me all about your travels.</p>
+      </div>
+
+      <div id="win-score-box">FINAL SCORE: <span id="final-score-val">0</span></div>
+
+      <button id="btn-win-continue" class="arcade-btn">VIEW LEADERBOARD</button>
+    </div>
+
+    <!-- Leaderboard Screen Overlay -->
+    <div id="leaderboard-screen" class="overlay" style="display: none;">
+      <h1 class="screen-title lb-title">LEADERBOARD</h1>
+      <div id="leaderboard-container">
+        <!-- Agent B renders leaderboard tables/forms here -->
+      </div>
+      <button id="btn-restart-game" class="arcade-btn">PLAY AGAIN</button>
+    </div>
+
+  </div>
+
+  <script src="game.js"></script>
+  <script src="leaderboard.js" onerror="console.log('leaderboard.js not loaded yet')"></script>
+</body>
+</html>
