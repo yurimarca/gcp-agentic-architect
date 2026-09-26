@@ -95,6 +95,114 @@
     store.set('last', last);
   }
 
+  /* ---------- narrator ---------- */
+  /**
+   * Plays pre-rendered clips from audio/ (see scripts/tts_mock_exam.py and audio/manifest.js).
+   * Options are shuffled per session, so a question is a playlist of clips in on-screen order.
+   * Buttons are re-rendered often, so playback state is tracked by id and re-applied by sync().
+   */
+  const Narrator = (() => {
+    const clips = window.EXAM_AUDIO?.clips || {};
+    const enabled = Object.keys(clips).length > 0;
+    const RATES = [1, 1.25, 1.5, 0.85];
+    const audio = new Audio();
+    audio.preload = 'auto';
+    let queue = [], pos = 0, current = null, rate = store.get('rate', 1);
+
+    const has = (key) => !!clips[key];
+    const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5Z"/></svg>';
+    const PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/></svg>';
+
+    function button(id, label, data) {
+      if (!enabled) return '';
+      const attrs = Object.entries(data).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
+      return `<button type="button" class="btn btn-ghost btn-listen" data-say-id="${esc(id)}" data-label="${esc(label)}" ${attrs} aria-pressed="false">${PLAY}<span>${esc(label)}</span></button>`;
+    }
+    const rateButton = () => (enabled ? `<button type="button" class="btn btn-ghost btn-rate" title="Narration speed">${rate}×</button>` : '');
+
+    function playlist(b) {
+      const { say, qid, order, sid } = b.dataset;
+      if (say === 'sc') return [{ key: `sc${sid}` }];
+      const q = QMAP[qid];
+      const keys = order.split('');
+      if (say === 'q') {
+        return [{ key: qid }, ...keys.flatMap((k, i) => [{ key: `lbl-${LETTERS[i]}`, qid, hl: k }, { key: `${qid}-o${k}`, qid, hl: k }])];
+      }
+      // 'x': explanations, correct answer first, then the rest in on-screen order
+      const ranked = [q.answer, ...keys.filter((k) => k !== q.answer)];
+      return ranked.flatMap((k) => [
+        { key: `lbl-${LETTERS[keys.indexOf(k)]}`, qid, hl: k },
+        { key: k === q.answer ? 'lbl-ok' : 'lbl-bad', qid, hl: k },
+        { key: `${qid}-w${k}`, qid, hl: k },
+      ]);
+    }
+
+    function sync() {
+      const it = current && queue[pos];
+      $$('.btn-listen').forEach((b) => {
+        const on = b.dataset.sayId === current && !audio.paused;
+        b.setAttribute('aria-pressed', String(on));
+        b.innerHTML = `${on ? PAUSE : PLAY}<span>${esc(b.dataset.label)}</span>`;
+      });
+      $$('.btn-rate').forEach((b) => { b.textContent = `${rate}×`; });
+      $$('.option.speaking').forEach((o) => o.classList.remove('speaking'));
+      if (it?.hl) $$(`[data-qscope="${it.qid}"] .option[data-key="${it.hl}"]`).forEach((o) => o.classList.add('speaking'));
+    }
+
+    function playAt(i) {
+      pos = i;
+      while (pos < queue.length && !has(queue[pos].key)) pos++;
+      if (pos >= queue.length) { stop(); return; }
+      const key = queue[pos].key;
+      audio.src = `audio/${key}.mp3?v=${clips[key].h}`;
+      audio.playbackRate = rate;
+      audio.play().then(sync, () => stop());
+      sync();
+    }
+    audio.addEventListener('ended', () => playAt(pos + 1));
+    audio.addEventListener('error', () => { if (current) playAt(pos + 1); });
+
+    function toggle(b) {
+      if (b.dataset.sayId === current) {
+        if (audio.paused) audio.play().then(sync, () => stop()); else { audio.pause(); sync(); }
+        return;
+      }
+      stop();
+      current = b.dataset.sayId;
+      queue = playlist(b);
+      playAt(0);
+    }
+
+    /** Stops playback; with a prefix, only if the current playlist id starts with it. */
+    function stop(prefix) {
+      if (!current || (prefix && !current.startsWith(prefix))) return;
+      audio.pause();
+      audio.removeAttribute('src');
+      current = null; queue = []; pos = 0;
+      sync();
+    }
+
+    function cycleRate() {
+      rate = RATES[(RATES.indexOf(rate) + 1) % RATES.length];
+      store.set('rate', rate);
+      audio.playbackRate = rate;
+      sync();
+    }
+
+    function clickListen(sayId) {
+      const b = $(`.btn-listen[data-say-id="${sayId}"]`);
+      if (b) toggle(b);
+    }
+
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.btn-listen');
+      if (b) { e.preventDefault(); toggle(b); return; }
+      if (e.target.closest('.btn-rate')) { e.preventDefault(); cycleRate(); }
+    });
+
+    return { enabled, button, rateButton, stop, sync, clickListen };
+  })();
+
   /* ---------- theme ---------- */
   function applyTheme(t) {
     if (t) document.documentElement.setAttribute('data-theme', t);
@@ -111,6 +219,7 @@
 
   /* ---------- views ---------- */
   function show(view) {
+    Narrator.stop();
     ['home', 'exam', 'results'].forEach((v) => { $('#view-' + v).hidden = v !== view; });
     window.scrollTo({ top: 0 });
   }
@@ -377,12 +486,20 @@
     return h;
   }
 
+  function audioRow(qid, order, revealed) {
+    if (!Narrator.enabled) return '';
+    const data = { qid, order: order.join('') };
+    return `<span class="audio-row">${Narrator.button(`q:${qid}`, 'Listen', { say: 'q', ...data })}${
+      revealed ? Narrator.button(`x:${qid}`, 'Explanations', { say: 'x', ...data }) : ''}${Narrator.rateButton()}</span>`;
+  }
+
   function scenarioPanelHTML(sc, index, count) {
     return `<details class="scenario-panel" open>
       <summary><div class="sp-head"><span class="scenario-num">Case study ${sc.id}${index ? ` · part ${index} of ${count}` : ''}</span><span class="sp-toggle">show / hide</span></div>
         <h2 class="sp-title">${esc(sc.title)}</h2></summary>
       <button type="button" class="diagram-btn" data-sid="${sc.id}" aria-label="Enlarge diagram">${ExamDiagrams.render(sc.id)}</button>
       <div class="sp-section">
+        ${Narrator.enabled ? `<div class="audio-row">${Narrator.button(`sc:${sc.id}`, 'Listen to brief', { say: 'sc', sid: sc.id })}${Narrator.rateButton()}</div>` : ''}
         <h4>Setup</h4><p>${inline(sc.context)}</p>
         <h4>Goal</h4><p>${inline(sc.goal)}</p>
         <h4>Constraints</h4><ul>${sc.constraints.map((c) => `<li>${inline(c)}</li>`).join('')}</ul>
@@ -408,6 +525,7 @@
     const firstOfScenario = S.idx === 0 || QMAP[S.items[S.idx - 1].id].scenario !== q.scenario;
 
     if (panelScenario !== sc.id) {
+      Narrator.stop('sc:');
       $('#scenario-slot').innerHTML = scenarioPanelHTML(sc, sOrder.length > 1 ? sOrder.indexOf(sc.id) + 1 : 0, sOrder.length);
       panelScenario = sc.id;
     }
@@ -423,6 +541,7 @@
         <span class="chip chip-accent">Case study ${sc.id} · Q${posInScenario}/${nInScenario.length}</span>
         ${q.domains.map((d) => `<span class="chip" title="${esc(DOMAINS[d].name)}">Domain ${d}</span>`).join('')}
         ${flagged ? '<span class="chip chip-ask">Flagged</span>' : ''}
+        ${audioRow(item.id, item.order, revealed)}
       </div>`;
     if (revealed && topicOf(q)) h += `<div class="q-topic">Topic: ${inline(topicOf(q))}</div>`;
     h += questionHTML(q, item.order, { selected, revealed, disabled: revealed });
@@ -444,10 +563,12 @@
           ${primary}
         </div>
       </div>
-      <p class="kbd-hint"><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> ${S.practice ? 'check / next' : 'next'} · <kbd>←</kbd><kbd>→</kbd> move · <kbd>F</kbd> flag</p>`;
+      <p class="kbd-hint"><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> ${S.practice ? 'check / next' : 'next'} · <kbd>←</kbd><kbd>→</kbd> move · <kbd>F</kbd> flag${Narrator.enabled ? ` · <kbd>L</kbd> listen${revealed ? ' · <kbd>E</kbd> explanations' : ''}` : ''}</p>`;
 
     const card = $('#question-card');
     card.innerHTML = h;
+    card.dataset.qscope = item.id;
+    Narrator.sync();
 
     // top bar
     const answered = Object.keys(S.answers).length;
@@ -480,6 +601,8 @@
 
   function go(i) {
     if (i < 0 || i >= S.items.length) return;
+    Narrator.stop('q:');
+    Narrator.stop('x:');
     S.idx = i;
     save();
     renderQuestion();
@@ -698,9 +821,10 @@
         return `<details class="review-item">
           <summary>${mark}<span class="review-title">Q${n}. ${inline(topicOf(q) || q.prompt)}<small>Case study ${q.scenario}: ${esc(SMAP[q.scenario].title)}</small></span>
             ${r.flags.includes(it.id) ? '<span class="chip chip-ask">Flagged</span>' : '<span></span>'}</summary>
-          <div class="review-body">${questionHTML(q, it.order, { selected: it.selected, revealed: true, disabled: true })}</div>
+          <div class="review-body" data-qscope="${q.id}">${Narrator.enabled ? `<div class="audio-row">${audioRow(q.id, it.order, true)}</div>` : ''}${questionHTML(q, it.order, { selected: it.selected, revealed: true, disabled: true })}</div>
         </details>`;
       }).join('') : '<p class="muted">Nothing to show for this filter.</p>';
+      Narrator.stop();
     };
     renderReview('all');
     $('#review-filters').onclick = (e) => {
@@ -767,6 +891,8 @@
     } else if (k === 'arrowright') { go(S.idx + 1); }
     else if (k === 'arrowleft') { go(S.idx - 1); }
     else if (k === 'f') { toggleFlag(); }
+    else if (k === 'l') { Narrator.clickListen(`q:${S.items[S.idx].id}`); }
+    else if (k === 'e') { Narrator.clickListen(`x:${S.items[S.idx].id}`); }
     else if (k === 'escape') { $('#navigator').hidden = true; }
   });
 

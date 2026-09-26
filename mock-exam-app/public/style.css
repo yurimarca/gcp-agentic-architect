@@ -133,6 +133,17 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 .btn-ghost:hover:not(:disabled) { border-color: var(--ink-3); }
 .btn-flag[aria-pressed="true"] { border-color: var(--ask); background: color-mix(in srgb, var(--ask) 18%, var(--surface)); }
 
+/* ============ Narrator ============ */
+.audio-row { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.q-meta .audio-row { margin-left: auto; }
+.btn-listen, .btn-rate { padding: 5px 11px; font-size: 13px; border-radius: 99px; }
+.btn-listen svg { width: 14px; height: 14px; fill: currentColor; }
+.btn-listen[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.btn-rate { min-width: 48px; font-variant-numeric: tabular-nums; }
+.sp-section .audio-row { margin-top: 10px; }
+.review-body .audio-row { margin-bottom: 12px; }
+.option.speaking { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+
 /* ============ Home ============ */
 .hero {
   display: grid; grid-template-columns: 1.05fr 1fr; gap: 32px; align-items: center;

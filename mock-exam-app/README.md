@@ -16,6 +16,7 @@ A scenario-based mock exam for the **Google Cloud Professional Agentic Architect
   | Review mistakes | Questions you last got wrong | — | After each answer |
 
 - **Results screen:** score, breakdown by domain and by case study, and a review of every question with an explanation for each option.
+- **Narration:** every case-study brief, question, option and explanation has a narrated clip. The clips are generated locally with an open TTS model. **Listen** reads the question and its options in the order shown on screen. After an answer is revealed, **Explanations** reads the correct option first, then the others. You can change the speed (1× / 1.25× / 1.5× / 0.85×), and the option being read is highlighted.
 - **Saved on this device (`localStorage`):** unfinished sessions (with a Resume option), attempt history, per-case-study progress and your mistakes.
 
 ## Project structure
@@ -26,6 +27,7 @@ mock-exam/                      ← source of truth (markdown)
 ├── exam-mock-scenarios.md      ← the 10 case-study briefs
 └── mock-qa-scenario-{1..10}.md ← 5 questions per case study
 scripts/build_mock_exam.py      ← markdown → public/questions.js
+scripts/tts_mock_exam.py        ← questions.js → public/audio/*.mp3 (local Kokoro TTS)
 mock-exam-app/
 ├── firebase.json               ← hosting target "mock-exam", emulator ports
 ├── .firebaserc                 ← project agy-sandbox-4a603, target → site "agy-mock-exam"
@@ -36,6 +38,7 @@ mock-exam-app/
     ├── questions.js            ← GENERATED question bank (window.EXAM_DATA)
     ├── diagrams.js             ← inline-SVG case-study diagrams
     ├── leaderboard.js          ← Firestore + anonymous auth (exam_scores)
+    ├── audio/                  ← GENERATED narration clips + manifest.js (window.EXAM_AUDIO)
     └── app.js                  ← exam engine, UI, results
 ```
 
@@ -52,6 +55,22 @@ The parser checks that every question has options A–D, a correct answer, a pro
 Questions are written in the style of the real exam. Requirements are stated as business facts inside the scenario, not as a Goal/Constraints list, and are never phrased with the words of the correct option. Every option should be something a competent engineer might choose, and options should be similar in length and detail. (The parser still accepts optional `**Context:**`, `**Goal:**` and `**Constraints:**` labels.)
 
 Diagrams are hand-laid-out SVG in `public/diagrams.js`, one function per scenario id. A new scenario still works without a diagram; it just won't have a picture.
+
+## Narration (local TTS)
+
+`scripts/tts_mock_exam.py` renders the narration with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), an open model (Apache-2.0) that runs on your own GPU. It is a `uv` inline script, so `uv` installs torch and kokoro on first run. You also need `ffmpeg`.
+
+```bash
+python3 scripts/build_mock_exam.py         # refresh questions.js first
+uv run scripts/tts_mock_exam.py            # renders only the clips whose text changed
+uv run scripts/tts_mock_exam.py --dry-run  # print the text that would be spoken
+uv run scripts/tts_mock_exam.py --only s3q2 sc3          # just these segments
+uv run scripts/tts_mock_exam.py --voice am_michael --force   # re-voice everything
+```
+
+Answer options are shuffled every attempt, so the script makes one clip per segment rather than one per question: the brief (`sc{N}`), the stem (`s{N}q{M}`), each option (`-o{K}`), each explanation (`-w{K}`) and short "Option A." label clips. The app puts them into a playlist in on-screen order. Each clip's hash is stored in `audio/manifest.js`, so re-runs are incremental and browsers fetch fresh files (`?v=<hash>`). A full render of about 107 minutes of audio takes about 2 minutes on an RTX 4070 and is about 38 MB of 48 kbps MP3.
+
+If the TTS mispronounces a term, add it to `SAY` in the script (whole-word replacements). Code spans are read as words, so `sub_agents` becomes "sub agents" and `roles/aiplatform.user` becomes "roles slash aiplatform dot user". If `audio/manifest.js` is missing, the app hides the narration controls.
 
 ## Firebase setup
 
@@ -102,4 +121,4 @@ The app is served at `https://agy-mock-exam.web.app` (or whatever site ID you ch
 
 ## Keyboard shortcuts
 
-`1`–`4` or `A`–`D` select an option · `Enter` check / next · `←` `→` previous / next · `F` flag · `Esc` close the navigator.
+`1`–`4` or `A`–`D` select an option · `Enter` check / next · `←` `→` previous / next · `F` flag · `L` listen to the question · `E` listen to the explanations (after answering) · `Esc` close the navigator.
