@@ -4,7 +4,7 @@ A scenario-based mock exam for the **Google Cloud Professional Agentic Architect
 
 - **50 questions** from **10 case studies**, covering all 5 exam domains.
 - **A diagram for every case study.** It shows the setup and constraints. The design decision each question asks about is marked with an amber **?**, so the diagram never gives away an answer.
-- **Answer options are shuffled every attempt.** In the source markdown, 48 of the 50 correct answers are "A". Each explanation stays attached to its option.
+- **Answer options are shuffled every attempt.** Each explanation stays attached to its option.
 - **Five modes:**
 
   | Mode | Questions | Timer | Feedback |
@@ -47,7 +47,9 @@ Edit the markdown in `mock-exam/`, then regenerate:
 python3 scripts/build_mock_exam.py
 ```
 
-The parser checks that every question has options A–D, a correct answer, a prompt, a context and one explanation per option. If anything is missing it stops with an error naming the question, for example `s3q2: missing explanation for ['C']`. Keep the existing markdown layout: `### **Question N (Domain X - Topic)**`, `**Context:**`, `**Goal:**`, `**Constraints:**`, a bold question line, `* **A.** …` options, then `#### **Answer & Explanation**` with `Correct Answer:`, `Why it's correct:` and `Why Distractor X fails:`.
+The parser checks that every question has options A–D, a correct answer, a prompt, a context and one explanation per option. If anything is missing it stops with an error naming the question, for example `s3q2: missing explanation for ['C']`. Keep the existing markdown layout: `### **Question N (Domain X - Topic)**`, a one-paragraph scenario, a bold question line, `* **A.** …` options, then `#### **Answer & Explanation**` with `Correct Answer:`, `Why it's correct:` and `Why Distractor X fails:`. The topic in the heading is shown only after the question is answered.
+
+Questions are written in the style of the real exam. Requirements are stated as business facts inside the scenario, not as a Goal/Constraints list, and are never phrased with the words of the correct option. Every option should be something a competent engineer might choose, and options should be similar in length and detail. (The parser still accepts optional `**Context:**`, `**Goal:**` and `**Constraints:**` labels.)
 
 Diagrams are hand-laid-out SVG in `public/diagrams.js`, one function per scenario id. A new scenario still works without a diagram; it just won't have a picture.
 

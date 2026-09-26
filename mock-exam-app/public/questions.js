@@ -152,981 +152,890 @@ window.EXAM_DATA = {
    "id": "s1q1",
    "scenario": 1,
    "number": 1,
-   "header": "Domain 1 & Domain 5",
+   "header": "Domain 1 & Domain 5 - Permissions-Aware Grounding",
    "domains": [
     1,
     5
    ],
-   "context": "A global retail enterprise is building a low-code customer support and employee intranet assistant. The assistant needs to answer queries using internal document repositories stored in Microsoft SharePoint and Google Drive. Each document in the source systems has strict Access Control Lists (ACLs) assigned to specific employee groups.",
-   "goal": "Configure the agent to perform enterprise search and generative synthesis over these repositories.",
-   "constraints": [
-    "Must require **minimal custom code** and leverage out-of-the-box Google Cloud platforms.",
-    "Must enforce **user-level Single Sign-On (SSO) and ACLs** so that users only receive generated responses sourced from documents they are explicitly authorized to read."
-   ],
-   "prompt": "Which approach should you recommend?",
+   "context": "A global retailer is piloting a Gemini Enterprise assistant that answers employee questions from SharePoint Online and Google Drive. Employees sign in with Microsoft Entra ID. To get the pilot running quickly, the team exported both repositories to a Cloud Storage bucket and indexed the bucket as a single data store. During the pilot, a store associate asked about bonus policy and received a summary of an HR compensation document that only HR managers can open in SharePoint. The team has no developers available for custom integrations.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Export all documents from SharePoint and Google Drive into a Cloud Storage bucket, create an Unstructured Data Store in Dialogflow CX, and configure a condition route to filter responses based on user department session parameters.",
-    "B": "Configure third-party and Google connectors in Gemini Enterprise / Agent Builder to index SharePoint and Google Drive, and set up Identity Mapping with an Identity Provider (Google Identity or Workforce Identity Federation). Allow Agent Search to evaluate source ACL metadata at query runtime.",
-    "C": "Build a custom Python agent using the Agent Development Kit (ADK) that authenticates with a central Service Account, retrieves documents via third-party REST APIs, and filters document lists in memory before passing context to the LLM.",
-    "D": "Create a Model Armor template with Semantic Governance policies that evaluate natural language user permissions before executing the data store search."
+    "A": "Split the bucket into an HR data store and a general data store, and use a condition route on `$session.params.department` so that only users whose department is HR are routed to the HR data store.",
+    "B": "Replace the export with the native SharePoint and Drive connectors, authenticated with one service account that can read every site, and add a system instruction that tells the assistant not to disclose HR content to non-HR users.",
+    "C": "Replace the export with the native SharePoint and Drive connectors, and configure Workforce Identity Federation with Entra ID so that each user's identity is mapped and source ACLs are enforced at query time.",
+    "D": "Build an ADK agent that calls Microsoft Graph and the Drive API with each user's delegated OAuth token and filters results by the user's permissions before grounding the answer."
    },
-   "answer": "B",
+   "answer": "C",
    "why": {
-    "B": "Gemini Enterprise / Agent Builder provides pre-built connectors for third-party systems (like SharePoint) and Google sources (like Google Drive). When configured with an Identity Provider (Google Identity or Workforce Pool), the platform automatically ingests and maintains source-level ACL metadata. At runtime, Agent Search enforces user-level permissions awareness so users only receive grounded answers from documents they have access to, satisfying all constraints without custom code.",
-    "A": "Exporting documents to Cloud Storage strips the native SharePoint/Drive ACL metadata. Dialogflow CX condition routes operating on department parameters cannot replicate document-level ACLs.",
-    "C": "Using a shared service account bypasses individual user ACLs. Furthermore, building a custom Python ADK agent violates the requirement for minimal custom code and low-code platforms.",
-    "D": "Model Armor's Semantic Governance policies evaluate natural language rules for tool invocations; they cannot parse or enforce low-level SaaS document ACL metadata."
+    "C": "Native connectors ingest the source ACLs along with the content. Once user identities are mapped (here through Workforce Identity Federation to Entra ID), Gemini Enterprise only grounds answers in documents the signed-in user can open in the source system. This fixes the leak at the document level without custom code.",
+    "A": "Department-based routing is much coarser than document-level ACLs: many HR documents are restricted to a subset of HR, and non-HR documents have their own restrictions. The session parameter is also not a trusted identity signal.",
+    "B": "The connectors are right, but a single service account identity makes every document visible to the retrieval layer. A system instruction is a soft control that the model can ignore or be manipulated into ignoring.",
+    "D": "It would enforce permissions correctly, but it is a custom build with ongoing maintenance, and the team has no developers available. The native connectors do the same thing out of the box."
    }
   },
   {
    "id": "s1q2",
    "scenario": 1,
    "number": 2,
-   "header": "Domain 5",
+   "header": "Domain 5 - PII Redaction Before the Model",
    "domains": [
     5
    ],
-   "context": "Your retail customer support agent processes incoming live chat queries. Occasionally, customers mistakenly type sensitive personal information—such as credit card numbers or Social Security Numbers (SSNs)—into the chat window.",
-   "goal": "Intercept and redact all Personally Identifiable Information (PII) from user prompts before the text reaches the foundation model or generative data store.",
-   "constraints": [
-    "Must use managed Google Cloud security services.",
-    "Must perform **inline sanitization/redaction** without modifying core agent application code or building custom regex proxies."
-   ],
-   "prompt": "Which architecture should you implement?",
+   "context": "Customers of the retailer's support agent sometimes paste full credit card numbers into the chat when disputing a charge. Compliance requires that card numbers never reach the model. The support team insists that the conversation must continue normally so the agent can still help with the dispute, rather than rejecting the message. The agent is managed by a vendor, and you cannot change its code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Attach a Model Armor template configured with Advanced Sensitive Data Protection (SDP) de-identification rules to the Agent Gateway ingress (or application entry point) in `Inspect and block` (or sanitize) mode.",
-    "B": "Configure Gemini model safety settings in Vertex AI, adjusting the `HARM_CATEGORY_DANGEROUS_CONTENT` safety threshold to `BLOCK_LOW_AND_ABOVE`.",
-    "C": "Add a system instruction in the agent prompt: *\"Do not process or store any credit card numbers or SSNs provided by the user.\"*",
-    "D": "Configure Cloud Build to execute automated regex scanning scripts on incoming prompt payloads during CI/CD test runs."
+    "A": "Create a Model Armor input template using Sensitive Data Protection advanced configuration with a de-identification template that masks card numbers, applied inline at ingress.",
+    "B": "Create a Model Armor input template that uses Sensitive Data Protection basic configuration with the credit card infoType, and set the enforcement type to `Inspect and block`.",
+    "C": "Add a `before_model_callback` that calls the Sensitive Data Protection `deidentify` API on each user message and replaces card numbers with a placeholder before the model call.",
+    "D": "Export conversation logs to BigQuery and run a scheduled Sensitive Data Protection job that finds and redacts card numbers from the stored transcripts."
    },
    "answer": "A",
    "why": {
-    "A": "Model Armor integrates with Sensitive Data Protection (SDP) to inspect and redact/mask PII (such as credit card numbers and SSNs) from user prompts in real time before the prompt is forwarded to the LLM. Attaching it at the Agent Gateway ingress or application entry point provides inline sanitization without requiring custom proxy code.",
-    "B": "Gemini Safety Settings (e.g., `HARM_CATEGORY_DANGEROUS_CONTENT`) filter toxic, hateful, or dangerous content; they do not perform PII redaction or structured SDP masking.",
-    "C": "System instructions rely on LLM compliance, which is non-deterministic and vulnerable to prompt injection. Raw PII would still enter the LLM's token context window.",
-    "D": "Cloud Build is a CI/CD automation pipeline for building and testing code artifacts during deployment; it cannot act as a real-time runtime proxy for live user prompts."
+    "A": "Model Armor's SDP advanced configuration can apply a de-identification template, which returns a sanitized prompt with the card number masked instead of rejecting the whole message. Applied inline at ingress, it keeps card numbers away from the model without any change to the agent's code, and the conversation continues.",
+    "B": "Basic configuration detects the card number, and `Inspect and block` then rejects the entire prompt. The model never sees the number, but the customer's message is dropped, which breaks the requirement to keep the conversation going.",
+    "C": "It would redact correctly, but callbacks are agent code, and you cannot modify the vendor's agent.",
+    "D": "It redacts data after the fact. By the time the batch job runs, the card number has already been sent to the model."
    }
   },
   {
    "id": "s1q3",
    "scenario": 1,
    "number": 3,
-   "header": "Domain 1",
+   "header": "Domain 1 - Open-Ended Q&A in Conversational Agents",
    "domains": [
     1
    ],
-   "context": "You are building a low-code virtual support agent in Conversational Agents (Dialogflow CX) for a retail platform. The agent must handle deterministic flows (such as `CheckOrderStatus` and `ProcessReturn`) while also answering unpredictable, open-ended user questions about store policies and product warranties grounded in uploaded PDF guides.",
-   "goal": "Enable open-ended Q&A capabilities within the agent.",
-   "constraints": [
-    "Must require **no custom webhook code**.",
-    "Must integrate seamlessly into Dialogflow CX flows and routes."
-   ],
-   "prompt": "Which configuration should you select?",
+   "context": "Your Conversational Agents (Dialogflow CX) support agent handles order status and returns through deterministic flows. The business now wants it to also answer open-ended questions about store policies and warranties. The source material is about 300 PDF guides in a Cloud Storage bucket, and the policy team replaces a few dozen of them every month. The contact-center team that maintains the agent has no developers and does not want to rebuild conversation paths every time a guide changes.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Create an Unstructured Data Store containing the PDF guides, create a Data Store Tool linked to the data store, and attach it to a route fulfillment / data store handler in Dialogflow CX.",
-    "B": "Deploy a Cloud Function webhook that executes a vector search query against Vertex AI Vector Search on every user turn and returns raw document text into page parameters.",
-    "C": "Configure an ADK `SequentialAgent` workflow in Python that routes every utterance through `VertexAiRagMemoryService` before invoking intent handlers.",
-    "D": "Create 50 individual Intent routes in Dialogflow CX, training each intent with hundreds of synthetic user phrases for every store policy."
+    "A": "Use Gemini to generate an intent with training phrases and a static response for each policy topic in the guides, and import the intents into the agent after each monthly update.",
+    "B": "Create a Generator whose prompt contains the text of the policy guides, and call it from a route on the Default Start Flow whenever no other intent matches.",
+    "C": "Build a Cloud Run webhook that queries a Vector Search index of the guides and returns the top passages as fulfillment text, and call it from the no-match event handler.",
+    "D": "Create an unstructured data store from the Cloud Storage bucket, refresh it when the guides change, and attach it to the agent as a data store tool for open-ended questions."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "Conversational Agents (Dialogflow CX) provides native **Data Store Tools / Data Store Handlers**. By creating an Unstructured Data Store for the PDFs and attaching the Data Store Tool to a fulfillment route, the agent automatically retrieves grounded answers for open-ended queries without writing any webhook code.",
-    "B": "Writing a custom Cloud Function webhook to query Vector Search requires significant custom code and re-invents built-in Data Store Tool features.",
-    "C": "ADK is a code-first framework, violating the low-code constraint. Furthermore, `VertexAiRagMemoryService` is designed for conversational session memory, not enterprise document RAG.",
-    "D": "Creating static intent routes for open-ended Q&A is unscalable, requires high manual maintenance overhead, and does not leverage generative grounding."
+    "D": "Data store tools and handlers are the built-in way for Conversational Agents to answer open-ended questions from indexed documents. The monthly update becomes a data store refresh; no flows, intents, or code need to change.",
+    "A": "Hundreds of generated intents with static answers have to be regenerated, reviewed, and re-imported every month. They are also brittle for questions phrased in ways the training phrases do not cover.",
+    "B": "300 PDFs do not fit in a generator prompt, and pasting guide text into the prompt means editing the agent each month.",
+    "C": "It would work, but it requires writing and operating custom webhook code, which the team cannot maintain, and it reimplements what data store tools provide natively."
    }
   },
   {
    "id": "s1q4",
    "scenario": 1,
    "number": 4,
-   "header": "Domain 5",
+   "header": "Domain 1 - Page Lifecycle & Form Parameters",
    "domains": [
-    5
+    1
    ],
-   "context": "An enterprise is deploying an autonomous customer support agent that interacts with public data stores and executes order lookup tools. Security architects want to ensure that even if a malicious user successfully executes a prompt injection attack on the support agent, the agent physically cannot access private internal Google Cloud projects containing corporate financial ledgers or employee HR records.",
-   "goal": "Enforce a hard infrastructure-level perimeter around the agent's identity.",
-   "constraints": [
-    "Must enforce boundaries directly on the agent's principal identity set.",
-    "Must be **fail-closed** and independent of LLM system prompt instructions."
-   ],
-   "prompt": "Which security mechanism should you configure?",
+   "context": "In the `ProcessReturn` flow of your Dialogflow CX agent, the `Collect Order` page has a required form parameter `order_number`. Transcript review shows that customers who open the conversation with \"I want to return order 48213\" are still asked \"What is your order number?\" The `return.start` intent, which routes into this flow, has many training phrases that contain order numbers, but the numbers in those phrases are not annotated.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Add a prompt instruction in the system prompt stating: *\"You are strictly prohibited from accessing HR or Financial databases.\"*",
-    "B": "Configure a Principal Access Boundary (PAB) policy attached to the agent's principal set (service account or agent SPIFFE identity) to restrict eligible access strictly to the customer support project resources.",
-    "C": "Configure an IAM Allow policy on the Finance Cloud Storage bucket with an IAM Condition checking the user's job title.",
-    "D": "Deploy Model Armor in `Inspect only` mode on the internal Finance API endpoints."
+    "A": "Add a condition route on the `Collect Order` page with the condition `$session.params.order_number != null` that transitions directly to the next page, so the form is skipped when the number is already known.",
+    "B": "Annotate the order numbers in the `return.start` training phrases with a parameter whose ID and entity type match the page's `order_number` form parameter, so that the form is prefilled.",
+    "C": "Add an entry fulfillment webhook on the `Collect Order` page that parses the last user utterance with a regular expression and sets `order_number` in the session parameters.",
+    "D": "Change `order_number` from required to optional on the `Collect Order` page so that the agent stops prompting for it, and read it later from the session if it is present."
    },
    "answer": "B",
    "why": {
-    "B": "Principal Access Boundary (PAB) policies attach directly to principal sets (service accounts, agent identities) to define the explicit, maximum set of resources the principal is eligible to access. PAB policies are additive and **fail-closed**, ensuring that even if an agent is hijacked via prompt injection, Google Cloud IAM blocks any access outside the PAB boundary at the infrastructure level.",
-    "A": "Prompt instructions are soft guardrails easily bypassed by prompt injection or model jailbreaks.",
-    "C": "IAM allow policies on the target resource do not limit the principal's overall boundary set across the organization if other over-permissioned bindings exist.",
-    "D": "`Inspect only` mode in Model Armor logs policy violations to Cloud Logging without blocking requests, providing zero active perimeter defense."
+    "B": "When a page becomes active, form parameter prefilling copies matching intent or session parameters into the form before the agent prompts the user. Because the intent's training phrases are not annotated, no `order_number` parameter is ever extracted, so there is nothing to prefill. Annotating the phrases with a matching parameter fixes this with no code.",
+    "A": "The route would work only if `order_number` were already set, and it never is, because nothing extracts it from the first utterance. It treats the symptom, not the cause.",
+    "C": "It works, but it adds custom webhook code and a fragile regular expression to do what intent parameter extraction and form prefilling already do natively.",
+    "D": "It stops the repeat question, but customers who did not include an order number are never asked for it, so the return cannot be processed."
    }
   },
   {
    "id": "s1q5",
    "scenario": 1,
    "number": 5,
-   "header": "Domain 1",
+   "header": "Domain 1 - Grounding Confidence & Fallback",
    "domains": [
     1
    ],
-   "context": "During pilot testing of a Dialogflow CX virtual support agent connected to a store policy Data Store, business testers report that when users ask questions about unlisted topics (e.g., store parking availability), the agent sometimes outputs low-confidence, ungrounded guesses.",
-   "goal": "Ensure the agent only returns answers when there is high confidence in the retrieved data store content, and gracefully falls back to a standardized message when information is missing.",
-   "constraints": [
-    "Must be configured within the low-code platform settings.",
-    "Must require **no custom backend code**."
-   ],
-   "prompt": "Which configuration changes should you make?",
+   "context": "During pilot testing of your Conversational Agents support agent, which uses a data store of store-policy guides, testers ask about topics the guides do not cover, such as store parking or employee discounts. The agent often answers with confident-sounding guesses that are not supported by any document. The business wants the agent to answer only when the guides clearly support the answer and otherwise reply with a standard message that offers a transfer to a human. The fix must be made in the console without code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "In the Data Store Tool settings, increase the Grounding Confidence level threshold, and configure a Static Fallback Response in the route fulfillment settings.",
-    "B": "Write a custom Python `before_model_callback` in ADK to inspect vector similarity scores and raise an exception if the score is below 0.8.",
-    "C": "Increase the LLM Temperature parameter in the model settings to `2.0`.",
-    "D": "Replace the Unstructured Data Store with a Google Search built-in tool."
+    "A": "Add a document to the data store that lists topics the company does not provide information about, such as parking and employee discounts, so that the agent retrieves it for those questions.",
+    "B": "Set the generative model's temperature to 0 in the agent's generative settings so that responses are deterministic and stay close to the retrieved content.",
+    "C": "Raise the grounding confidence threshold in the data store settings, and configure the fallback for the data store handler to return the standard message with a live-agent handoff.",
+    "D": "Add a line to the agent's instructions: \"Only answer if the information is in the policy guides; otherwise say you don't know and offer a human agent.\""
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "Dialogflow CX Data Store settings allow developers to adjust the **Grounding Confidence level**. Setting a higher confidence threshold prevents the agent from displaying low-confidence generated answers. Configuring a Static Fallback Response in fulfillment handles no-match/low-confidence events gracefully without custom code.",
-    "B": "Writing a custom Python callback requires code execution and is not applicable to low-code Dialogflow CX agents.",
-    "C": "Temperature controls output randomness; increasing temperature to `2.0` increases hallucination rates rather than suppressing low-confidence answers.",
-    "D": "Replacing internal document data stores with Google Search grounds answers in the public web rather than internal company policies, exposing customers to irrelevant external information."
+    "C": "The grounding confidence threshold stops the agent from returning generated answers that are weakly supported by the retrieved content. The data store handler's fallback then returns the standard message and handoff. Both are console settings, so no code is needed.",
+    "A": "It only covers topics someone thought to list. Customers will ask about many other unsupported topics, and the list becomes an endless maintenance task.",
+    "B": "Temperature controls randomness, not grounding. A model at temperature 0 can still produce an unsupported answer consistently.",
+    "D": "It may reduce guesses, but it relies on the model following an instruction, which is not deterministic. The confidence threshold enforces the behavior at the platform level."
    }
   },
   {
    "id": "s2q1",
    "scenario": 2,
    "number": 1,
-   "header": "Domain 2 & Domain 3",
+   "header": "Domain 2 & Domain 3 - Remote MCP Transport",
    "domains": [
     2,
     3
    ],
-   "context": "An engineering organization is deploying containerized Model Context Protocol (MCP) servers on Cloud Run to expose schema inspection and SQL execution tools across 16 PostgreSQL and AlloyDB instances. Software developers use the Agent Development Kit (ADK) inside VS Code and Antigravity IDEs to build internal coding assistants that connect to these tools.",
-   "goal": "Configure the local and cloud-deployed ADK agents to securely invoke tools hosted on the remote Cloud Run MCP server.",
-   "constraints": [
-    "Must use a standardized transport layer that operates over network HTTP/HTTPS connections.",
-    "Must support passing IAM Bearer authentication tokens and allow stateless autoscaling on Cloud Run.",
-    "Must avoid relying on local subprocess pipes or Standard I/O (`stdio`) redirections for remote database access."
-   ],
-   "prompt": "Which configuration should you recommend?",
+   "context": "Your platform team runs a shared MCP Toolbox for Databases server on Cloud Run. It holds the connection pools and Secret Manager credentials for 16 PostgreSQL and AlloyDB instances, and the service requires authentication. Developers built an ADK agent that works on their laptops, where `McpToolset` launches the Toolbox binary locally over `stdio`. After the agent was deployed to Agent Runtime, every tool call fails. Security requires that database credentials stay only in the shared server and that every tool call is attributable to the calling agent's identity.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Instantiate `McpToolset` in ADK using `StreamableHTTPConnectionParams` (or SSE transport), providing the Cloud Run service URL and passing authorization token headers.",
-    "B": "Instantiate `McpToolset` in ADK using Standard I/O (`stdio`) transport params referencing a local `npx @modelcontextprotocol/server-postgres` process.",
-    "C": "Embed the database credentials and full connection strings directly into system prompt instructions using model context caching.",
-    "D": "Export the database tables into static CSV files and create a Dialogflow CX Unstructured Data Store."
+    "A": "Add the Toolbox binary and its configuration to the agent's deployment package so the `stdio` connection works the same way in Agent Runtime as it does on developer laptops.",
+    "B": "Configure `McpToolset` with `StreamableHTTPConnectionParams` pointing to the Cloud Run service URL, pass an identity token for the agent in the authorization header, and grant the agent's identity permission to invoke the service.",
+    "C": "Allow unauthenticated invocations on the Cloud Run service, restrict its ingress to internal traffic, and connect to it from the agent with `StreamableHTTPConnectionParams`.",
+    "D": "Configure `McpToolset` with `StreamableHTTPConnectionParams` pointing to the Cloud Run service URL, and pass each database's user name and password in request headers so the server can open connections on the agent's behalf."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "For remote MCP servers deployed on cloud infrastructure (like Cloud Run or GKE), the Model Context Protocol uses **Streamable HTTP / Server-Sent Events (SSE)**. In ADK, configuring `McpToolset` with `StreamableHTTPConnectionParams` allows the agent to establish an HTTPS connection, pass authorization headers (e.g., Bearer tokens / IAM), and interact statelessly with the containerized MCP server.",
-    "B": "Standard I/O (`stdio`) transport is strictly designed for local subprocess execution on the developer's machine; it cannot establish remote network connections to Cloud Run endpoints.",
-    "C": "Hardcoding database credentials in system prompts exposes raw secrets in prompt memory, violates security best practices, and does not provide programmatic API connection capabilities.",
-    "D": "Static CSV exports in Dialogflow CX cannot perform real-time transactional SQL queries, schema updates, or dynamic database analytics required for a coding agent."
+    "B": "Remote MCP servers are reached over Streamable HTTP (or SSE), not `stdio`. Sending the agent's identity token lets Cloud Run authenticate the caller with IAM, so each call is attributable to the agent, and credentials stay in the shared server.",
+    "A": "Bundling the binary would give every agent instance its own copy of the database credentials and its own connection pools, which is exactly what the shared server is meant to prevent.",
+    "C": "Internal ingress limits where traffic comes from, but unauthenticated access removes IAM identity, so calls are no longer attributable to a specific agent.",
+    "D": "Sending credentials from the agent moves the secrets into the agent, which violates the requirement that they stay in the shared server."
    }
   },
   {
    "id": "s2q2",
    "scenario": 2,
    "number": 2,
-   "header": "Domain 2",
+   "header": "Domain 2 - Tool Schema Bloat",
    "domains": [
     2
    ],
-   "context": "A data engineering team deploys a self-hosted **MCP Toolbox for Databases** server on Cloud Run. The server exposes over 40 individual schema inspection, SQL formatting, and table querying tools. Developers notice that when loading the full MCP server into their ADK agent, prompt context windows become bloated with dozens of unneeded tool JSON schemas, increasing token billing and causing reasoning drift.",
-   "goal": "Reduce prompt context bloat while maintaining developer access to required database query tools.",
-   "constraints": [
-    "Must strictly enforce the principle of least privilege regarding exposed tool schemas.",
-    "Must prevent loading all 40+ schemas into the agent's main context window on every turn."
-   ],
-   "prompt": "Which approach should you implement in ADK?",
+   "context": "A shared MCP Toolbox server exposes 40 tools to several teams, including schema inspection, SQL formatting, read queries, and `execute_sql`. Your reporting agent needs only three read-only tools. Evaluation runs show that the agent sometimes chooses the wrong tool and, twice, called `execute_sql` to run an `UPDATE`. Token usage per turn is also high because every tool schema is sent to the model. The platform team does not want to run another server.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Apply a `tool_filter` allowlist parameter inside `McpToolset` to expose only the specific tools required by that agent (e.g., `tool_filter=[\"query_sales_db\", \"get_schema_summary\"]`).",
-    "B": "Switch the base LLM model to Gemini 1.5 Pro and enable model context caching across all 40 tool schemas.",
-    "C": "Convert all 40 MCP tools into static system instructions embedded in the agent's system prompt.",
-    "D": "Deploy a Model Armor template with Sensitive Data Protection (SDP) rules to strip tool schemas from incoming prompts."
+    "A": "Add to the agent's system instruction the names of the three tools it is allowed to use, and state that it must never run statements that modify data.",
+    "B": "Enable context caching for the agent's system instruction and tool declarations, so the 40 tool schemas are cached and not billed as new input tokens on every turn.",
+    "C": "Switch the agent to a model with a larger context window so that all 40 tool schemas fit with room to spare and do not crowd out the conversation.",
+    "D": "Set `tool_filter` on the agent's `McpToolset` to the three read-only tools it needs, so that only those schemas are loaded and only those tools can be called."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "`McpToolset` in ADK supports the `tool_filter` parameter. This allows developers to allowlist only the exact subset of tool functions required for the agent's specific role, preventing context window bloat and eliminating unneeded token costs while adhering to least privilege access.",
-    "B": "Context caching reduces latency for fixed prompt prefixes but does not prevent schema overload from cluttering the model's active function-calling choices and causing reasoning drift.",
-    "C": "Embedding raw JSON schemas in system instructions consumes context tokens just like tool declarations and removes native tool-calling validation.",
-    "D": "Model Armor sanitizes PII and inspects safety/injection risks; it cannot filter or manage MCP tool schema definitions in application code."
+    "D": "`tool_filter` limits which of the server's tools the agent loads. The model sees only three schemas, which cuts tokens and reduces tool-selection mistakes, and `execute_sql` cannot be called at all. It needs no new infrastructure.",
+    "A": "The model still sees all 40 schemas, so token usage is unchanged, and an instruction does not prevent it from calling `execute_sql`.",
+    "B": "Caching reduces cost, but the model still chooses from 40 tools, so the wrong-tool and write problems remain.",
+    "C": "Tool-selection accuracy and write safety are not caused by a lack of space; a larger window keeps all the same problems and costs more."
    }
   },
   {
    "id": "s2q3",
    "scenario": 2,
    "number": 3,
-   "header": "Domain 2 & Domain 3",
+   "header": "Domain 2 & Domain 3 - Isolating Sub-Agent Context",
    "domains": [
     2,
     3
    ],
-   "context": "You are designing a complex data analysis agent using ADK. The agent must execute SQL queries across 16 AlloyDB instances, process raw database outputs, and run iterative, multi-step trial-and-error reasoning loops to transform the retrieved data.",
-   "goal": "Select the tool architecture that prevents intermediate trial-and-error execution logs and massive SQL output payloads from cluttering the root orchestrator's context window.",
-   "constraints": [
-    "The root orchestrator's context window must remain clean and focused on user interaction.",
-    "Must enable **model tiering** (e.g., using Gemini Flash for low-cost query execution sub-agents and Gemini Pro for root orchestrator reasoning)."
-   ],
-   "prompt": "Which design pattern should you recommend?",
+   "context": "Your analyst assistant uses a Gemini Pro root agent for conversation. SQL exploration is delegated to a sub-agent through `sub_agents`, so the root transfers control to it. The SQL work involves many attempts, error messages, and large result sets. After a few questions, the session holds hundreds of thousands of tokens and answer quality drops. You also want the SQL work to run on Gemini Flash to reduce cost. The root agent needs only the final findings from each exploration.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Wrap the specialized database sub-agent as an `AgentTool` (Agent-as-a-Tool) attached to the root orchestrator agent.",
-    "B": "Attach all 16 AlloyDB connection functions directly as Custom Python Function Tools on the root orchestrator agent.",
-    "C": "Hardcode the 16 AlloyDB connection strings in system prompts and run `stdio` subprocess loops.",
-    "D": "Build a `ParallelAgent` workflow where all 16 instances are queried simultaneously on every turn regardless of user intent."
+    "A": "Wrap the SQL agent in an `AgentTool` on the root agent and configure it with Gemini Flash, so that only its final answer is returned to the root.",
+    "B": "Keep the SQL agent in `sub_agents` but configure it with Gemini Flash, so that the expensive exploration runs on the cheaper model while control transfers back and forth as before.",
+    "C": "Move the SQL tools onto the root agent and have them write raw query results to `temp:` state keys, so the results are discarded at the end of each turn.",
+    "D": "Switch the root agent to a model with a larger context window and enable context caching, so the growing session history fits and costs less per turn."
    },
    "answer": "A",
    "why": {
-    "A": "Wrapping a specialized sub-agent inside an `AgentTool` isolates the sub-agent's execution loop. All intermediate reasoning, trial-and-error retries, and raw database payloads stay inside the sub-agent's own context window, returning only the final synthesized result to the root orchestrator. This also enables model tiering (e.g., Gemini Flash for the sub-agent tool, Gemini Pro for the root).",
-    "B": "Attaching all functions directly to the root orchestrator forces all raw database payloads, error tracebacks, and schema schemas into the root context window, causing rapid token bloat and increasing cost.",
-    "C": "Hardcoding connection strings violates security guidelines and does not isolate reasoning loops.",
-    "D": "Querying all 16 databases simultaneously on every turn causes massive unnecessary latency, database load, and token waste."
+    "A": "`AgentTool` runs the child agent as a tool call. Its trial-and-error loop and large payloads stay inside its own execution, and the root receives only the final result. It also lets the child use a different, cheaper model (model tiering).",
+    "B": "Model tiering is achieved, but transferred sub-agents share the session's event history, so all the attempts and large results still accumulate in the conversation the root sees.",
+    "C": "Tool responses are added to the model's context when the tool returns, regardless of where the data is also stored in state, so the root's context still grows.",
+    "D": "It postpones the problem and raises cost; quality still degrades as the context fills with irrelevant intermediate data."
    }
   },
   {
    "id": "s2q4",
    "scenario": 2,
    "number": 4,
-   "header": "Domain 2 & Domain 4",
+   "header": "Domain 2 - `agents-cli` Workflow",
    "domains": [
-    2,
-    4
+    2
    ],
-   "context": "An engineering team is adopting `agents-cli` to standardize building, testing, evaluating, and deploying ADK coding agents across local IDEs (VS Code/Antigravity) and Google Cloud.",
-   "goal": "Set up `agents-cli` in the local development environment and automatically equip developer coding assistants with specialized skills for ADK code patterns, evaluation, and deployment workflows.",
-   "constraints": [
-    "Must install the CLI toolchain and register context-aware skills without manually copying Markdown prompt files into each developer's IDE directory.",
-    "Must support rapid local prototyping with interactive testing before deploying infrastructure to Google Cloud."
-   ],
-   "prompt": "Which command workflow should you execute?",
+   "context": "A team of 12 developers is starting a new ADK agent using Antigravity and Claude Code. Their coding assistants keep generating outdated ADK APIs. The team wants to prototype and test conversations locally for a few weeks before committing to any cloud infrastructure, and later add Cloud Run deployment with CI/CD to the same project.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which sequence should the team follow?",
    "options": {
-    "A": "Run `uvx google-agents-cli setup` to install the CLI and register injected skills, create a prototype project with `agents-cli create --prototype`, and test locally using `agents-cli playground`.",
-    "B": "Run `gcloud builds submit` to build a container image, deploy directly to GKE, and inspect pod stdout logs.",
-    "C": "Create a Cloud Shell environment and run `pip install google-adk` manually on every developer workspace restart.",
-    "D": "Import the `agents-cli-manifest.yaml` file into the Dialogflow CX Console as a custom entity type."
+    "A": "Run `uvx google-agents-cli setup`, create the project with `agents-cli create --prototype`, iterate with `agents-cli playground`, and later deploy the prototype with `agents-cli deploy -d cloud_run`.",
+    "B": "Create the project with `agents-cli create -d cloud_run` so the Dockerfile, Terraform and Cloud Build files exist from the start, and test each change by deploying it to a staging service.",
+    "C": "Run `uvx google-agents-cli setup`, create the project with `agents-cli create --prototype`, iterate with `agents-cli playground`, and later run `agents-cli scaffold enhance -d cloud_run` before deploying.",
+    "D": "Install `google-adk` with `pip`, add the current ADK documentation to each repository's assistant instruction file, and test locally with the ADK web UI."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "Running `uvx google-agents-cli setup` automatically installs `agents-cli` and injects the 7 context-aware developer skills (scaffolding, ADK coding, evaluation, deployment, etc.) into detected IDEs. `agents-cli create --prototype` creates a minimal project, and `agents-cli playground` launches a local web UI for instant hot-reloading tests before committing to cloud deployments.",
-    "B": "Deploying to GKE before local prototyping adds heavy infrastructure overhead and slows down the development iteration cycle.",
-    "C": "Manual `pip install` in Cloud Shell does not inject the CLI developer skills into local IDE coding assistants.",
-    "D": "`agents-cli-manifest.yaml` is a project configuration manifest for coding agents, not an entity schema for Dialogflow CX."
+    "C": "`setup` installs the CLI and injects the ADK skills into the developers' coding assistants, which fixes the outdated-API problem. `create --prototype` and `playground` support local iteration with no cloud infrastructure, and `scaffold enhance` later adds the Dockerfile, Terraform and CI/CD for Cloud Run to the existing project.",
+    "A": "A prototype project has no deployment infrastructure. The `scaffold enhance` step is needed to add the Cloud Run files before deploying.",
+    "B": "It commits to cloud infrastructure from day one and slows iteration, because every test needs a deployment. It also does not fix the coding assistants' outdated APIs.",
+    "D": "Copying documentation into each repository is manual and goes stale, and it provides none of the CLI's scaffolding, evaluation or deployment workflows."
    }
   },
   {
    "id": "s2q5",
    "scenario": 2,
    "number": 5,
-   "header": "Domain 2",
+   "header": "Domain 2 - Data Agent Kit",
    "domains": [
     2
    ],
-   "context": "Data engineers at a financial services firm want to equip IDE coding assistants (VS Code / Antigravity) with capabilities to query schema structures, construct SQL queries, and orchestrate analytics pipelines across BigQuery, Spanner, Dataproc, and Cloud Storage.",
-   "goal": "Enable natural language data engineering tools in the IDE without forcing developers to manually copy-paste massive DDL table schemas into prompt windows.",
-   "constraints": [
-    "Must leverage Google's open-source extension and skill pack built specifically for data engineering and analytics IDE workflows.",
-    "Must seamlessly bridge IDE coding agents to Google Cloud Data Cloud services via MCP toolboxes and data skills."
-   ],
-   "prompt": "Which product or plugin should you integrate into the development environment?",
+   "context": "Data engineers at a financial services firm want their VS Code coding assistant to write BigQuery SQL, build dbt models, and submit Dataproc jobs. Today they paste table schemas into the chat by hand. The platform team has proposed building a custom MCP server that wraps the BigQuery and Dataproc APIs. Management wants the option that requires the least building and maintenance while covering all these data services.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Install and configure the **Data Agent Kit (DAK)** plugin in the IDE / CLI coding assistant environment.",
-    "B": "Configure a Dialogflow CX Generator with custom entity types for every BigQuery column.",
-    "C": "Grant the coding agent execution rights to run raw `bq` CLI commands via unconstrained local bash execution tools.",
-    "D": "Set up a Vertex AI Search Web Data Store pointing to public SQL documentation."
+    "A": "Deploy MCP Toolbox for Databases with a BigQuery source, and connect the coding assistant to it for schema discovery and query execution.",
+    "B": "Install Data Agent Kit in the developers' IDE and coding-assistant environment to add Google's prebuilt data skills and MCP toolboxes.",
+    "C": "Approve the custom MCP server on Cloud Run that wraps the BigQuery, dbt and Dataproc APIs, and register it in each developer's assistant configuration.",
+    "D": "Allow the coding assistant to run `bq` and `gcloud dataproc` commands in the terminal using each developer's own credentials, with a read-only role on production datasets."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "**Data Agent Kit (DAK)** is Google Cloud's open-source plugin and skill pack designed specifically for data engineers and data scientists. It equips IDE/CLI coding agents with pre-built data skills and MCP toolboxes that bridge natural language prompts directly to 20+ Google Data Cloud services (BigQuery, Spanner, Dataproc, dbt), eliminating manual schema copy-pasting.",
-    "B": "Dialogflow CX Generators are for conversational chatbots, not IDE-based data engineering coding agents.",
-    "C": "Giving an agent unconstrained raw bash access to run `bq` CLI without structured schema tools or guardrails creates severe security and command-injection risks.",
-    "D": "Public SQL documentation provides generic syntax examples but cannot inspect internal corporate database schemas or execute data pipelines."
+    "B": "Data Agent Kit is Google's open-source extension and skill pack for data engineering in IDEs and CLI coding agents. It covers BigQuery, Spanner, Dataproc, dbt and other Data Cloud services with prebuilt skills and MCP toolboxes, so there is nothing to build or operate.",
+    "A": "Toolbox helps with database schema discovery and queries, but it does not provide the dbt and Dataproc pipeline skills the engineers need.",
+    "C": "It would work, but it is exactly the custom build-and-maintain effort management wants to avoid.",
+    "D": "Raw CLI access gives the assistant no structured schema context or data skills, and letting an assistant run arbitrary commands with personal credentials is hard to govern."
    }
   },
   {
    "id": "s3q1",
    "scenario": 3,
    "number": 1,
-   "header": "Domain 3 - RAG Engine Deployment Modes & CMEK Compliance",
+   "header": "Domain 3 - RAG Engine Deployment Modes & CMEK",
    "domains": [
     3
    ],
-   "context": "A regional healthcare network is building a clinical decision-support agent using Gemini Enterprise RAG Engine to index unstructured patient notes and medical reference guides.",
-   "goal": "Select the RAG Engine deployment mode for vector indexing, metadata storage, and similarity retrieval.",
-   "constraints": [
-    "Must comply with strict healthcare data security standards mandating **Customer-Managed Encryption Keys (CMEK)** for all stored embeddings and vector indices.",
-    "Must provide dedicated database infrastructure isolation."
-   ],
-   "prompt": "Which deployment mode should you recommend?",
+   "context": "A regional healthcare network is building a clinical decision-support agent on RAG Engine to index consultation notes and clinical guidelines. The security office requires that every copy of patient-derived data, including embeddings and indexes, be encrypted with keys the network manages in Cloud KMS. The two-person platform team wants a managed RAG service and does not want to operate its own vector database.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Deploy RAG Engine in **Spanner Mode**, leveraging dedicated Google Cloud Spanner infrastructure for vector and metadata storage with CMEK enabled.",
-    "B": "Deploy RAG Engine in **Serverless Mode**, relying on automatically managed default Vector Search 2.0 collections.",
-    "C": "Store embeddings in Cloud Firestore and set `CMEK_DISABLED=false` in the Dialogflow CX console settings.",
-    "D": "Export vector embeddings as static JSON files in a Cloud Storage bucket and configure Model Armor to handle key rotation."
+    "A": "Deploy RAG Engine in Serverless mode, and enable customer-managed encryption keys on the Cloud Storage bucket that holds the source documents.",
+    "B": "Deploy RAG Engine in Serverless mode, and place the project in a VPC Service Controls perimeter so that the index cannot be accessed from outside the network.",
+    "C": "Deploy AlloyDB with `pgvector` and customer-managed encryption keys, and write retrieval code in the agent that runs similarity queries against it.",
+    "D": "Deploy RAG Engine in Spanner mode with customer-managed encryption keys enabled on the dedicated Spanner instance that stores the RAG data."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "RAG Engine on Gemini Enterprise Agent Platform supports two deployment modes: Serverless Mode and Spanner Mode. While Serverless Mode provides auto-provisioned Vector Search 2.0 collections, it **does not support Customer-Managed Encryption Keys (CMEK)**. Enterprise healthcare workloads requiring CMEK compliance or dedicated database isolation must deploy RAG Engine in **Spanner Mode**.",
-    "B": "Serverless Mode uses default shared collections that do not support CMEK key management.",
-    "C": "Cloud Firestore is not the native underlying vector index engine for RAG Engine, and Dialogflow CX settings do not control CMEK key policies for RAG Engine.",
-    "D": "Static JSON files in Cloud Storage do not provide vector similarity search capabilities, and Model Armor is a content sanitization/guardrail proxy, not a key rotation engine."
+    "D": "Serverless mode provisions a managed Vector Search collection that does not support CMEK. Spanner mode stores RAG data on dedicated Spanner infrastructure, which supports CMEK, while RAG Engine remains a managed service.",
+    "A": "Only the source documents are encrypted with the network's keys. The embeddings and index that RAG Engine creates in Serverless mode are not.",
+    "B": "VPC Service Controls limits access and exfiltration, but it does not change how data is encrypted, so the CMEK requirement is still unmet.",
+    "C": "It meets the CMEK requirement, but the team would be operating its own vector database and writing retrieval code, which it wants to avoid."
    }
   },
   {
    "id": "s3q2",
    "scenario": 3,
    "number": 2,
-   "header": "Domain 3 - GraphRAG Architecture with Spanner Graph",
+   "header": "Domain 3 - GraphRAG with Spanner Graph",
    "domains": [
     3
    ],
-   "context": "A clinical support team needs an agent that can traverse complex relationships between patient diagnoses, prescribed medications, contraindications, and historical treatment outcomes, while also retrieving unstructured consultation notes.",
-   "goal": "Architect a retrieval subsystem that combines graph relationship traversals with vector similarity search.",
-   "constraints": [
-    "Must use a single, unified Google Cloud database engine to store both property graph nodes/edges and vector embeddings.",
-    "Must support executing multi-hop graph pattern queries and vector distance calculations in a unified query model."
-   ],
-   "prompt": "Which database solution should you implement?",
+   "context": "Clinicians want the agent to answer questions such as \"Which patients on drug X have a condition that contraindicates drug Y, and what did similar past cases do?\" Today, relationships between patients, medications and conditions are in BigQuery tables, consultation notes are embedded in Vector Search, and the agent joins the two in Python. Results are often inconsistent because the two stores are updated at different times. The team wants one operational store where multi-hop relationship queries and vector similarity run together.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Deploy **Spanner Graph**, modeling clinical entities and relationships as property graph tables while storing vector embeddings directly within Spanner Graph for unified graph-vector retrieval.",
-    "B": "Store graph edges in BigQuery and vector embeddings in Memorystore for Redis, linking them via a Cloud Function webhook.",
-    "C": "Configure a Dialogflow CX Custom Entity for every medical term and route queries through Google Search.",
-    "D": "Use Cloud SQL for PostgreSQL with `pgvector` only, and write system prompts asking the LLM to infer multi-hop relationships from raw text."
+    "A": "Move everything to AlloyDB, store the note embeddings with `pgvector`, and write recursive common table expressions to follow patient–drug–condition relationships across multiple hops.",
+    "B": "Model patients, medications and conditions as a property graph in Spanner Graph, store note embeddings in the same database, and combine graph traversals with vector distance in one query.",
+    "C": "Keep the relationship tables in BigQuery, generate the note embeddings there too, and use BigQuery vector search with SQL joins to answer relationship questions.",
+    "D": "Keep both existing stores, run the relationship query and the vector query in parallel, and merge their results with Reciprocal Rank Fusion before sending them to the model."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "**Spanner Graph** combines graph database capabilities with vector search in a single distributed database engine. It allows developers to model entities (patients, drugs, conditions) as property graph nodes and edges while storing vector embeddings directly alongside graph attributes, enabling GraphRAG multi-hop relationship traversals and semantic vector searches in a single query.",
-    "B": "Splitting data across BigQuery and Redis increases network latency, operational overhead, and transaction complexity compared to a unified GraphRAG database engine.",
-    "C": "Dialogflow CX custom entities are designed for intent parameter extraction in conversational flows, not for building scalable enterprise knowledge graphs.",
-    "D": "Standard relational tables with `pgvector` lack native property graph query semantics for efficient multi-hop relationship traversals (e.g., path finding across patient-drug-symptom links)."
+    "B": "Spanner Graph stores property graph nodes and edges and vector embeddings in one database, so multi-hop graph pattern queries and vector similarity can be combined in a single, consistent query. This is the GraphRAG pattern the scenario needs.",
+    "A": "It gives one store, but multi-hop relationships are expressed as recursive joins with no native graph query model. These become complex and slow as the number of hops grows.",
+    "C": "BigQuery is an analytics warehouse. It is not built for low-latency, per-request serving to an agent, and it also lacks native graph traversal.",
+    "D": "RRF merges ranked lists; it does not traverse relationships and does not fix the consistency problem caused by two separately updated stores."
    }
   },
   {
    "id": "s3q3",
    "scenario": 3,
    "number": 3,
-   "header": "Domain 3 - Hybrid Search & Reciprocal Rank Fusion",
+   "header": "Domain 3 - Hybrid Search & Rank Fusion",
    "domains": [
     3
    ],
-   "context": "A healthcare agent receives clinical queries containing exact medical codes (e.g., ICD-10 code `E11.9`) mixed with broad natural language descriptions (e.g., *\"type 2 diabetes without complications\"*).",
-   "goal": "Implement a search pipeline that delivers high precision for both exact medical codes and broad semantic concepts.",
-   "constraints": [
-    "Must execute exact keyword search and semantic vector search **in parallel**.",
-    "Must combine and re-rank the two distinct result sets using a standardized algorithm before sending context to the LLM."
-   ],
-   "prompt": "Which retrieval pattern should you implement?",
+   "context": "The clinical agent currently uses semantic vector search only. When clinicians search for an exact ICD-10 code such as `E11.9`, the top results often describe related codes like `E11.8`. An earlier keyword-only prototype had the opposite problem: it missed notes that described the same condition in different words. The team wants one retrieval pipeline that handles both kinds of query well.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Execute keyword search and semantic vector search concurrently, and merge the resulting rank lists using **Reciprocal Rank Fusion (RRF)** before applying final reranking with the Agent Search Ranking API.",
-    "B": "Run keyword search first; if zero results are returned, execute a vector search as a sequential fallback.",
-    "C": "Pass all incoming queries through Model Armor to strip exact ICD-10 codes before executing pure vector search.",
-    "D": "Increase the LLM temperature setting to `1.5` so the model infers missing medical codes automatically."
+    "A": "Run keyword search first, and run vector search only if the keyword search returns no results, then pass whichever result set was produced to the reranker.",
+    "B": "Run keyword search and vector search in parallel, normalize each result's raw score to a 0–1 range, and sort the combined list by the normalized score.",
+    "C": "Run keyword search and vector search in parallel, merge the two ranked lists with Reciprocal Rank Fusion, and then rerank the merged candidates with the Ranking API.",
+    "D": "Fine-tune the embedding model on a dataset of ICD-10 codes and their descriptions, so that vector search alone distinguishes exact codes from related ones."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "In enterprise GraphRAG/RAG architectures, **Hybrid Search** executes keyword search (for exact terms/codes) and semantic vector search (for broad conceptual context) in parallel. The two candidate lists are merged using **Reciprocal Rank Fusion (RRF)**, ensuring both exact matches and semantic matches are appropriately scored before undergoing final reranking with the Agent Search Ranking API.",
-    "B": "Sequential fallback fails when keyword search returns a partial match; it misses complementary semantic context that would have been retrieved by running vector search concurrently.",
-    "C": "Stripping exact medical codes destroys high-precision search signals critical for clinical decision making.",
-    "D": "Increasing LLM temperature increases output randomness and hallucinations, which is dangerous in healthcare settings."
+    "C": "Hybrid search runs both retrievers in parallel. RRF combines them by rank position, which works even though keyword scores and vector similarities are on different scales. The Ranking API then reorders the merged candidates for relevance before the model sees them.",
+    "A": "A query that returns a few keyword matches never runs vector search, so semantically relevant notes are missed whenever there are partial keyword hits.",
+    "B": "Keyword and vector scores are not comparable, even after normalization, so one retriever can dominate unpredictably. Rank-based fusion avoids this.",
+    "D": "It is costly, and embeddings are still weak at exact-token matching, so exact code lookups would remain unreliable."
    }
   },
   {
    "id": "s3q4",
    "scenario": 3,
    "number": 4,
-   "header": "Domain 3 - Multimodal Ingestion Pipeline for Diagnostic Data",
+   "header": "Domain 3 - Multimodal Ingestion",
    "domains": [
     3
    ],
-   "context": "The healthcare network needs to ingest unstructured diagnostic assets—specifically X-ray image files stored in Cloud Storage—into the clinical decision-support retrieval pipeline.",
-   "goal": "Process X-ray images and make them searchable alongside textual medical consultation notes.",
-   "constraints": [
-    "Must avoid building separate, complex OCR or third-party computer vision pre-processing pipelines.",
-    "Must generate multimodal embeddings that map both visual features and textual notes into a shared vector space."
-   ],
-   "prompt": "Which ingestion workflow should you implement?",
+   "context": "The network stores X-ray images in Cloud Storage alongside the text of consultation notes. Radiologists want to search in two ways: by text, for example \"hairline fracture of the distal radius\", and by image, by uploading a new X-ray to find visually similar past cases. Both kinds of search should return relevant images and notes together. The team does not want to run a separate computer-vision pipeline.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Trigger an event-driven Cloud Run pipeline (via Pub/Sub) that sends X-ray images to **Gemini Multimodal Embedding APIs** to generate unified vector embeddings, storing them directly in the vector database alongside document text embeddings.",
-    "B": "Run an open-source OCR script to extract raw text coordinates from images, discarding the visual image data prior to indexing.",
-    "C": "Convert X-ray image files into base64 strings and store them inside a Dialogflow CX Custom Entity table.",
-    "D": "Configure Agent Gateway in egress mode to transform binary X-ray files into plain text Markdown tables."
+    "A": "Use an event-driven pipeline that sends each X-ray and each note to a multimodal embedding model, and store all the vectors together in one index.",
+    "B": "Use Gemini to write a detailed text description of each X-ray, embed those descriptions with a text embedding model, and index them together with the note embeddings.",
+    "C": "Run OCR on each X-ray to extract any printed labels and annotations, and index the extracted text together with the consultation notes in the text index.",
+    "D": "Embed the X-rays with an image embedding model and the notes with a text embedding model, store each in its own index, and query both indexes for every search."
    },
    "answer": "A",
    "why": {
-    "A": "Gemini Multimodal Embedding models natively process both images and text into a unified embedding space. An event-driven ingestion pipeline (Cloud Storage → Pub/Sub → Cloud Run) can pass raw diagnostic images directly to the embedding API, creating vector representations that capture visual medical features without requiring separate OCR or external computer vision pipelines.",
-    "B": "OCR only extracts text characters (if present) and completely discards visual features (such as bone fractures or tissue density visible in X-rays).",
-    "C": "Base64 strings in Dialogflow CX custom entities do not generate vector embeddings and will fail entity size limitations.",
-    "D": "Agent Gateway is a network security policy proxy for traffic management; it is not a data transformation or embedding engine."
+    "A": "A multimodal embedding model places images and text in the same vector space. A text query can then find relevant images, an image query can find similar images and related notes, and no separate computer-vision pipeline is needed.",
+    "B": "Text search would work, but image-to-image search now depends on generated descriptions, which lose the visual detail that makes two X-rays similar.",
+    "C": "X-rays contain little text, so OCR discards almost all of the diagnostic information.",
+    "D": "Vectors from two separate models are in different spaces and cannot be compared, so a text query cannot find images, and the reverse is also true."
    }
   },
   {
    "id": "s3q5",
    "scenario": 3,
    "number": 5,
-   "header": "Domain 3 - Privacy & Turn-Scoped State Isolation",
+   "header": "Domain 3 - Long-Term Memory",
    "domains": [
     3
    ],
-   "context": "When physicians interact with the clinical decision-support agent, the agent performs intermediate risk-score calculations during a turn. System architects must ensure these intermediate variables do not leak across sessions or pollute permanent memory stores.",
-   "goal": "Select the appropriate Agent Development Kit (ADK) state namespace to store temporary calculations during an active invocation.",
-   "constraints": [
-    "Data stored in this namespace must be **discarded immediately** when the turn completes.",
-    "Must prevent temporary intermediate variables from persisting into session history or user-scoped state."
-   ],
-   "prompt": "Which ADK state namespace should you use?",
+   "context": "Physicians want the clinical agent to remember things they have said in earlier sessions, such as \"I follow the ADA guidelines\" or \"give me summaries as bullet points\", without repeating them each time. Physicians sometimes change these preferences. For example, one cardiologist recently switched from the ACC guidelines to the ESC guidelines. The remembered information must be retrievable only for the physician it belongs to. The agent already uses a managed session service.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Store intermediate calculations in the **`temp:`** state namespace (e.g., `session.state[\"temp:risk_score\"]`).",
-    "B": "Store intermediate calculations in the **`user:`** state namespace.",
-    "C": "Store intermediate calculations in the **`app:`** state namespace.",
-    "D": "Store intermediate calculations in the non-prefixed session state (e.g., `session.state[\"risk_score\"]`)."
+    "A": "Use `VertexAiRagMemoryService` to store each physician's full session transcripts, and search them for relevant past statements at the start of each new session.",
+    "B": "Store each preference in a `user:` state key, such as `user:guideline_source`, and add every key the agent might need to its instructions with templating.",
+    "C": "Load each physician's last 20 sessions from the session service into the model's context at the start of every new session.",
+    "D": "Use `VertexAiMemoryBankService` to extract and consolidate facts from each physician's completed sessions, and search the physician's memories when a new session starts."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "ADK enforces strict state namespaces:\n* **`temp:`**: Scoped strictly to a **single turn/invocation** and discarded immediately after the turn ends. Ideal for scratchpad math, raw API payloads, or intermediate variables.\n* **No prefix**: Session-scoped (persists across turns in that single thread).\n* **`user:`**: User-scoped (persists across *all* sessions for that user ID).\n* **`app:`**: Global application-scoped (shared across all users and sessions).",
-    "B": "The `user:` namespace persists across all future sessions for that physician/patient, leaking turn-specific scratchpad data into long-term user memory.",
-    "C": "The `app:` namespace is global across the entire application, causing multi-tenant data cross-contamination.",
-    "D": "Non-prefixed state is session-scoped and persists throughout the active session rather than being cleared at the end of the turn."
+    "D": "Memory Bank uses an LLM to extract facts from sessions and consolidate them, so a newer preference updates or replaces an older one. Memories are scoped to the user and retrievable by similarity search.",
+    "A": "Raw transcript search returns everything that was said, including outdated preferences. The cardiologist's old ACC statement can be retrieved alongside, or instead of, the new ESC one.",
+    "B": "`user:` state suits a few known, structured settings. It cannot capture open-ended facts that no one anticipated, and it has no semantic search.",
+    "C": "It fills the context with irrelevant history, costs more, and still misses anything said more than 20 sessions ago."
    }
   },
   {
    "id": "s4q1",
    "scenario": 4,
    "number": 1,
-   "header": "Domain 3 - ADK Workflow Patterns & Parallel Execution",
+   "header": "Domain 3 - ADK Workflow Patterns",
    "domains": [
     3
    ],
-   "context": "An e-commerce platform uses the Agent Development Kit (ADK) to build an order-processing orchestrator. When a customer submits an order, the root agent must invoke three sub-agents: `InventoryAgent`, `PaymentValidationAgent`, and `ShippingEstimationAgent`. None of these three sub-agents depend on the outputs or state of the others.",
-   "goal": "Configure the ADK workflow to minimize end-to-end execution latency during high-volume sales events.",
-   "constraints": [
-    "Sub-agents must execute **concurrently** in parallel rather than sequentially.",
-    "Must use built-in ADK workflow classes without writing manual custom Python `asyncio` boilerplate."
-   ],
-   "prompt": "Which ADK workflow class should you use to orchestrate these sub-agents?",
+   "context": "Your checkout flow uses an ADK root agent that calls an inventory sub-agent, a payment-validation sub-agent, and a shipping-estimate sub-agent. During last year's peak sale, p95 latency reached 9 seconds. Traces show the three sub-agents running one after another, each taking about 2.5 seconds, and none of them reads another's output. The final reply to the customer must combine all three results. You want to reduce latency with as little custom code as possible.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "`ParallelAgent`",
-    "B": "`SequentialAgent`",
-    "C": "`LoopAgent`",
-    "D": "`RoutedAgent`"
+    "A": "Keep the root `LlmAgent` and list the three agents in its `sub_agents`, so that the model can transfer control to each agent as needed and then combine the results.",
+    "B": "Put the three sub-agents in a `ParallelAgent`, and make it the first step of a `SequentialAgent` whose second step is a summary agent that reads each sub-agent's `output_key`.",
+    "C": "Wrap each sub-agent in an `AgentTool` on the root agent, and rely on the model issuing the three tool calls in a single parallel function-calling turn.",
+    "D": "Put all three sub-agents and the summary agent in a single `ParallelAgent`, so that all four agents start at the same time and the overall latency is as low as possible."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "ADK's `ParallelAgent` workflow class executes independent sub-agents concurrently. This minimizes end-to-end latency when sub-tasks do not depend on each other's intermediate state.",
-    "B": "`SequentialAgent` executes sub-agents serially one after another, multiplying overall latency by the sum of individual sub-agent execution times.",
-    "C": "`LoopAgent` repeatedly executes a sequence of sub-agents in a loop until a termination condition is met; it does not execute sub-agents in parallel.",
-    "D": "`RoutedAgent` evaluates a routing function to select exactly *one* target sub-agent per invocation rather than running all sub-agents concurrently."
+    "B": "`ParallelAgent` runs the independent sub-agents concurrently, which cuts latency from about 7.5 seconds to about 2.5 seconds. Wrapping it in a `SequentialAgent` guarantees that the summary agent runs only after all three results are in state. This is the standard fan-out/gather pattern and needs no custom code.",
+    "A": "LLM-driven transfer hands control to one sub-agent at a time, so the work still runs one step after another, and the order depends on the model.",
+    "C": "The calls might run in parallel, but only if the model chooses to issue them together. The latency improvement is not guaranteed.",
+    "D": "The summary agent would start before the other three have produced their results, so it has nothing to combine."
    }
   },
   {
    "id": "s4q2",
    "scenario": 4,
    "number": 2,
-   "header": "Domain 3 - ADK State Namespaces & Data Lifetimes",
+   "header": "Domain 3 - State Namespaces",
    "domains": [
     3
    ],
-   "context": "During order processing, the `PaymentValidationAgent` generates temporary transaction verification tokens and intermediate API signature hashes. Simultaneously, the system needs to fetch and remember the customer's preferred delivery instructions across all future shopping sessions.",
-   "goal": "Assign the appropriate ADK state namespaces for storing (1) the temporary verification tokens and (2) the customer's delivery preferences.",
-   "constraints": [
-    "Temporary verification tokens must be **discarded immediately** when the turn completes to avoid memory leaks or token exposure.",
-    "Delivery preferences must persist **across all sessions** for that specific customer ID."
-   ],
-   "prompt": "Which state namespace configuration should you implement?",
+   "context": "Your checkout agent handles three pieces of data. First, the payment agent creates a signed verification nonce that a later tool call in the same turn needs; compliance says the nonce must not be retrievable afterwards. Second, the customer's loyalty tier takes 400 ms to fetch from the CRM, changes rarely, and should be available in all of that customer's future sessions. Third, a `checkout_step` value tracks progress through the current checkout conversation across several turns.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which state key prefixes should you use?",
    "options": {
-    "A": "Store verification tokens in the `temp:` namespace (e.g., `session.state[\"temp:auth_token\"]`) and delivery preferences in the `user:` namespace (e.g., `session.state[\"user:delivery_pref\"]`).",
-    "B": "Store verification tokens in the `app:` namespace and delivery preferences in the `temp:` namespace.",
-    "C": "Store verification tokens in the non-prefixed session namespace and delivery preferences in the `app:` namespace.",
-    "D": "Store both verification tokens and delivery preferences in the non-prefixed session namespace."
+    "A": "`nonce` with no prefix, `user:loyalty_tier`, and `temp:checkout_step`.",
+    "B": "`temp:nonce`, `app:loyalty_tier`, and `checkout_step` with no prefix.",
+    "C": "`temp:nonce`, `user:loyalty_tier`, and `checkout_step` with no prefix.",
+    "D": "`temp:nonce`, `user:loyalty_tier`, and `user:checkout_step`."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "ADK enforces 4 state namespaces:\n* `temp:` variables persist strictly for the **current turn/invocation** and are discarded immediately after the turn finishes.\n* `user:` variables persist **across all sessions** for that specific `user_id`.",
-    "B": "`app:` is global across all users and all sessions, exposing sensitive auth tokens to all system tenants; `temp:` would delete delivery preferences at the end of the turn.",
-    "C": "Non-prefixed state persists throughout the session (not deleted after the turn); `app:` would overwrite delivery preferences globally across all customers.",
-    "D": "Storing both in non-prefixed session state means tokens remain in session history for the entire session, and delivery preferences are lost when the session ends."
+    "C": "`temp:` data lasts only for the current invocation, so the nonce is available to the later tool call and then discarded. `user:` data persists across all sessions for the same user, which suits the loyalty tier. Unprefixed keys are session-scoped, which suits progress within one checkout conversation.",
+    "A": "The unprefixed nonce stays in session state for the rest of the session, which breaks the compliance rule. `temp:checkout_step` is discarded after every turn, so progress is lost.",
+    "B": "`app:` is shared by all users, so one customer's loyalty tier would overwrite everyone else's.",
+    "D": "`user:checkout_step` carries over into the customer's next, unrelated checkout, which then starts partway through."
    }
   },
   {
    "id": "s4q3",
    "scenario": 4,
    "number": 3,
-   "header": "Domain 3 - State Aggregation in Parallel Workflows",
+   "header": "Domain 3 - Aggregating Parallel Results",
    "domains": [
     3
    ],
-   "context": "You have configured a `ParallelAgent` containing `InventoryAgent`, `PaymentValidationAgent`, and `ShippingEstimationAgent`. Each sub-agent writes its final calculation status into `session.state` using its configured `output_key`. A downstream `OrderSummaryAgent` in a `SequentialAgent` pipeline needs to aggregate these three distinct results into a final confirmation response to the user.",
-   "goal": "Configure sub-agent output writing and downstream prompt templating so the `OrderSummaryAgent` receives all three results cleanly.",
-   "constraints": [
-    "Must prevent sub-agents from overwriting each other's state variables during concurrent execution.",
-    "Must pass aggregated values into the `OrderSummaryAgent` prompt instructions using standard ADK state templating."
-   ],
-   "prompt": "Which design pattern should you implement?",
+   "context": "Your pipeline is a `SequentialAgent` that runs a `ParallelAgent` (inventory, payment and shipping sub-agents) and then an `OrderSummaryAgent`. Sometimes the summary says \"shipping quote unavailable\", even though the logs show the shipping agent produced a quote. All three sub-agents are configured with `output_key=\"result\"`, and the summary agent's instruction references `{result}`.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Assign unique `output_key` values to each sub-agent (e.g., `inventory_status`, `payment_status`, `shipping_quote`), and reference them in the downstream agent's instructions using `{inventory_status}`, `{payment_status}`, and `{shipping_quote}`.",
-    "B": "Have all three sub-agents write to `session.state[\"temp:output\"]` simultaneously and rely on ADK's automatic array concatenation.",
-    "C": "Wrap all three sub-agents in a single `LoopAgent` with a shared `global_output` string variable.",
-    "D": "Store output strings as environment variables in `.env` during execution."
+    "A": "Give each sub-agent its own `output_key`, and reference the three keys, such as `{shipping_quote}`, in the summary agent's instruction.",
+    "B": "Replace the `ParallelAgent` with a `SequentialAgent`, so that the three sub-agents write to `result` one at a time and the summary reads a predictable value.",
+    "C": "Change the shared key to `temp:result`, so that the value is kept only for the current invocation and is not carried over into the next turn.",
+    "D": "Remove `{result}` from the summary agent's instruction and tell it to read the three sub-agents' messages from the conversation history instead."
    },
    "answer": "A",
    "why": {
-    "A": "In ADK parallel execution, sub-agents run concurrently over the same `InvocationContext`. To avoid race conditions and state overwrites, each sub-agent must write its output to a unique `output_key` in `session.state`. Downstream agents in a `SequentialAgent` wrapper can then access these variables directly via `{var_name}` instruction templating.",
-    "B": "Writing to the same state key simultaneously creates a race condition where sub-agents overwrite each other's output unpredictably.",
-    "C": "`LoopAgent` runs agents sequentially in a loop, violating the parallel execution requirement.",
-    "D": "Environment variables are process-global, static, and cannot hold dynamic, request-scoped concurrent session outputs."
+    "A": "All three sub-agents share the same session state, so writing to the same key means whichever finishes last overwrites the others. Distinct keys keep all three results, and the summary agent reads each one with `{key}` templating.",
+    "B": "Running them in sequence still leaves only the last writer's value in `result`, and it gives up the latency gain the parallel design was built for.",
+    "C": "The prefix changes how long the key lasts, not the fact that three agents write to the same key, so values are still overwritten.",
+    "D": "It makes the summary depend on the model finding and interpreting the right messages, which is not deterministic. Explicit state keys are the reliable handoff."
    }
   },
   {
    "id": "s4q4",
    "scenario": 4,
    "number": 4,
-   "header": "Domain 3 - Loop Workflows & Escalation Exit Conditions",
+   "header": "Domain 3 - Loop Workflows",
    "domains": [
     3
    ],
-   "context": "An e-commerce platform uses an ADK `LoopAgent` to retry inventory reservation requests against external supplier APIs when initial attempts fail due to transient network rate limits.",
-   "goal": "Configure the loop workflow to retry reservations while preventing runaway infinite loops if a supplier API remains down permanently.",
-   "constraints": [
-    "Must enforce a hard maximum retry iteration limit at the workflow level.",
-    "Must allow a sub-agent to break out of the loop early if a non-retryable error (e.g., `ITEM_OUT_OF_STOCK`) occurs."
-   ],
-   "prompt": "Which configuration combination should you implement?",
+   "context": "An ADK `LoopAgent` retries inventory reservations against supplier APIs that sometimes return rate-limit errors. During a supplier outage last week, the loop ran for 20 minutes before an engineer stopped it. Logs also show that when a supplier returns `ITEM_OUT_OF_STOCK`, the loop keeps retrying even though the result will never change.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Set `max_iterations` on the `LoopAgent`, and configure the inventory sub-agent to return `EventActions(escalate=True)` when encountering a non-retryable error.",
-    "B": "Set `max_iterations=0` on the `LoopAgent` and raise an unhandled Python `RuntimeError` inside the sub-agent.",
-    "C": "Deploy a Model Armor template with `Inspect and block` mode enabled on the supplier API URL.",
-    "D": "Use a `ParallelAgent` with `retry_count=infinite` in the `.env` configuration file."
+    "A": "Set `max_iterations` on the `LoopAgent`, so that the loop stops after a fixed number of attempts, including when the item is out of stock.",
+    "B": "Replace the `LoopAgent` with an `LlmAgent` whose instruction tells it to retry the reservation tool up to three times and to stop immediately if the item is out of stock.",
+    "C": "Have the reservation tool raise a Python exception when it receives `ITEM_OUT_OF_STOCK`, so that the loop ends, and rely on the supplier's rate limits to slow down retries.",
+    "D": "Set `max_iterations` on the `LoopAgent`, and have the reservation sub-agent return `EventActions(escalate=True)` when it receives a non-retryable error such as `ITEM_OUT_OF_STOCK`."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "`LoopAgent` in ADK supports `max_iterations` as a hard safety cap against infinite loops. Sub-agents inside a loop can trigger an early exit/escalation by returning `EventActions(escalate=True)` when encountering non-retryable fatal conditions (like `ITEM_OUT_OF_STOCK`), breaking out of the loop immediately.",
-    "B": "Raising unhandled exceptions crashes the entire agent runtime container process rather than gracefully escalating or falling back in the agent workflow.",
-    "C": "Model Armor filters prompt injection and PII, not API retry loop logic or backend business exception flow control.",
-    "D": "`ParallelAgent` runs concurrent branches, not retries; `retry_count=infinite` is invalid syntax."
+    "D": "`max_iterations` is a hard cap that prevents runaway loops during outages. Escalation lets a sub-agent end the loop as soon as it sees an error that retrying cannot fix. Together they cover both failure modes.",
+    "A": "The cap fixes the outage case, but out-of-stock requests still use up every retry before stopping.",
+    "B": "The retry limit and exit condition now depend on the model following instructions, which is not deterministic.",
+    "C": "An unhandled exception ends the whole invocation with an error instead of exiting the loop cleanly, and it does nothing to cap retries during outages."
    }
   },
   {
    "id": "s4q5",
    "scenario": 4,
    "number": 5,
-   "header": "Domain 3 & Domain 4 - Session State Externalization for Cloud Run",
+   "header": "Domain 3 & Domain 4 - Session Persistence on Cloud Run",
    "domains": [
     3,
     4
    ],
-   "context": "An e-commerce platform anticipates 50,000 concurrent user sessions during a Cyber Monday flash sale. The order-processing agent is deployed as containerized pods on Google Cloud Run. Individual Cloud Run container instances scale up and down rapidly, and requests from the same user may hit different container instances across consecutive turns.",
-   "goal": "Ensure short-term session state (`session.state`) and conversation history persist seamlessly without losing session state when Cloud Run instances scale down or restart.",
-   "constraints": [
-    "Must NOT store session state in in-memory local dictionaries inside the application container.",
-    "Must use a fully managed, horizontally scalable Google Cloud session storage service supported natively by ADK."
-   ],
-   "prompt": "Which session storage architecture should you deploy?",
+   "context": "The order agent runs on Cloud Run and uses `InMemorySessionService`. During a flash sale with about 50,000 concurrent sessions, customers reported that the agent \"forgot\" their cart partway through checkout. This happened most often while Cloud Run was scaling. A teammate proposes enabling session affinity on the service.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Configure ADK's `DatabaseSessionService` backed by Cloud SQL for PostgreSQL / AlloyDB (or `FirestoreSessionService` / `Agent Platform Sessions`) to externalize state storage.",
-    "B": "Store `session.state` in local JSON files inside the `/tmp/` directory of the Cloud Run container instance.",
-    "C": "Pass the entire raw session history string back and forth in user browser HTTP cookies on every request.",
-    "D": "Store session state as system instructions in a Model Armor template."
+    "A": "Enable session affinity on the Cloud Run service, so that each customer's requests are routed to the instance that already holds their session in memory.",
+    "B": "Set the minimum and maximum number of instances to the same value, so that Cloud Run never scales down and no instance holding sessions is removed.",
+    "C": "Replace `InMemorySessionService` with `DatabaseSessionService` backed by Cloud SQL or AlloyDB, so that whichever instance receives a turn can load and update that customer's session.",
+    "D": "Mount a Cloud Storage bucket with Cloud Storage FUSE, and write a snapshot of each in-memory session to a file after every turn so it can be reloaded later."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "To support stateless, horizontally scaling container runtimes like Cloud Run, ADK externalizes short-term session state to distributed storage backends such as `DatabaseSessionService` (Cloud SQL / AlloyDB), `FirestoreSessionService`, or `Agent Platform Sessions`. This ensures any scaling container instance can load and update the active session state.",
-    "B": "Local `/tmp/` files are ephemeral and local to a single container instance. When Cloud Run scales down or routes the next request to a different container, the session state is lost.",
-    "C": "Browser cookies have strict size limitations (4KB) and expose internal session state to client-side tampering and security vulnerabilities.",
-    "D": "Model Armor templates are security policy definitions, not data persistence stores."
+    "C": "Externalizing sessions to a shared, durable store means any instance can serve any turn, and nothing is lost when instances start or stop. This is how ADK is meant to run on horizontally scaling platforms.",
+    "A": "Cloud Run session affinity is best effort. When an instance is shut down or overloaded, requests move to another instance, and in-memory sessions are lost.",
+    "B": "Requests are still spread across many instances that do not share memory, instances still restart, and the fixed size removes the elasticity needed for a flash sale.",
+    "D": "File snapshots on FUSE have no concurrency control, so parallel requests can overwrite each other, and it reimplements a session store badly."
    }
   },
   {
    "id": "s5q1",
    "scenario": 5,
    "number": 1,
-   "header": "Domain 3 - Interoperability Protocols & Multi-Agent Architecture",
+   "header": "Domain 3 - Choosing an Interoperability Pattern",
    "domains": [
     3
    ],
-   "context": "A multinational logistics enterprise operates a North America Logistics Agent built in Python and an independent Europe Logistics Agent built in Java by a separate regional subsidiary. The North America agent needs to delegate international shipment queries to the Europe agent across network boundaries. The interaction requires passing reasoning thought traces, handling 45-second long-running clearance tasks, and returning binary customs PDF file artifacts.",
-   "goal": "Select the multi-agent design pattern and protocol that meets all functional requirements without consolidating both agents into a single codebase.",
+   "context": "A logistics company's North America agent, built with ADK in Python and running on Agent Runtime, needs to hand international shipment questions to the Europe agent. The Europe agent is written in Java, runs in a subsidiary's own Google Cloud project, and is released on the subsidiary's own schedule. It reasons over several steps, sometimes asks the caller clarifying questions, and returns customs PDFs. One engineer suggests exposing the Europe agent's customs functions as an MCP server.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which architecture should you recommend?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Expose the Europe Agent as an **`A2AServer`** and consume it in the North America Agent using a **`RemoteA2aAgent`** client proxy via the **Agent2Agent (A2A) protocol**.",
-    "B": "Refactor the Europe Agent code into Python and import it directly as a local `SequentialAgent` sub-agent running in the same application memory process.",
-    "C": "Wrap the Europe Agent inside a local `stdio` MCP server using `McpToolset`.",
-    "D": "Deploy a Dialogflow CX Generator and pass customs PDFs through session parameters."
+    "A": "Expose the Europe agent's customs functions through an MCP server on Cloud Run, and connect the North America agent to it with `McpToolset` over Streamable HTTP.",
+    "B": "Ask the subsidiary to port the Europe agent to Python ADK, and add it to the North America agent's `sub_agents` so that the two share one deployment.",
+    "C": "Have the Europe agent publish an agent card and serve the Agent2Agent (A2A) protocol, and have the North America agent consume it through `RemoteA2aAgent`.",
+    "D": "Wrap the Europe agent's REST endpoint in a custom Python function tool on the North America agent that posts the question and returns the response text."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "The **Agent2Agent (A2A) protocol** is designed specifically for independent agents running as separate microservices across network boundaries, organizational teams, or programming languages (e.g., Python and Java). In ADK, exposing the Europe agent as an `A2AServer` and consuming it via `RemoteA2aAgent` natively supports preserving reasoning traces, tracking long-running tools without timeouts, and transferring file artifacts (customs PDFs).",
-    "B": "Local sub-agents run in the same application memory process. Force-refactoring a Java microservice into a single Python monolith violates team independence, cross-language support, and modularity.",
-    "C": "Standard I/O (`stdio`) MCP servers execute as local machine subprocesses and cannot connect to remote cloud services over cross-project networks.",
-    "D": "Dialogflow CX session parameters are intended for short conversational text slots; they cannot transfer raw binary PDF file artifacts or handle cross-framework A2A reasoning traces."
+    "C": "A2A is designed for independent agents that collaborate across projects, languages and release cycles. It supports multi-turn exchanges, long-running tasks and file artifacts, and the Europe agent keeps its own autonomy and codebase.",
+    "A": "MCP exposes tools, which are single stateless function calls. The Europe agent's own reasoning, clarifying questions and task lifecycle are lost.",
+    "B": "It removes the subsidiary's independence in language, project and release schedule, which the scenario requires to be kept.",
+    "D": "A plain REST wrapper has no protocol for tasks, streaming status, clarifying turns or artifacts, so each of these has to be custom-built."
    }
   },
   {
    "id": "s5q2",
    "scenario": 5,
    "number": 2,
-   "header": "Domain 3 & Domain 5 - IAM Delegation for A2A Communication",
+   "header": "Domain 3 & Domain 5 - Least-Privilege Access for A2A",
    "domains": [
     3,
     5
    ],
-   "context": "The North America Logistics Agent uses a SPIFFE-based Agent Identity (`identity_type=AGENT_IDENTITY`) deployed on Agent Runtime. It needs to discover and send messages to the Europe Logistics Agent registered in **Agent Registry** across project boundaries.",
-   "goal": "Grant the minimum required IAM permissions to allow the North America Agent to discover and invoke the Europe Agent.",
-   "constraints": [
-    "Must adhere to the principle of least privilege.",
-    "Permissions must be granted directly to the parent agent's **SPIFFE principal identity**, not to human developer user accounts."
-   ],
-   "prompt": "Which IAM role configuration should you apply?",
+   "context": "The North America agent runs on Agent Runtime with its own agent identity. It must discover the Europe agent in Agent Registry and then send it messages. The Europe agent is deployed on Agent Runtime in the subsidiary's project, which also contains about 20 other agents that the North America agent must not call. Your security team requires least privilege.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What IAM configuration should you apply?",
    "options": {
-    "A": "Grant **`roles/agentregistry.viewer`** on the Agent Registry resource and **`roles/aiplatform.user`** on the target Europe agent's reasoning engine resource directly to the North America Agent's SPIFFE principal string.",
-    "B": "Grant `roles/owner` on the Google Cloud Organization to the human developer who deployed the North America agent.",
-    "C": "Generate a long-lived Service Account JSON key, embed it in the North America agent's `.env` file, and pass it in HTTP headers.",
-    "D": "Configure a Model Armor template in `Inspect only` mode on the Europe agent's project."
+    "A": "Grant the North America agent's principal `roles/agentregistry.viewer` on the registry, and `roles/aiplatform.user` on the Europe agent's reasoning engine resource only.",
+    "B": "Grant the North America agent's principal `roles/agentregistry.viewer` on the registry, and `roles/aiplatform.user` on the subsidiary's project.",
+    "C": "Grant the service account used by the CI/CD pipeline that deploys the North America agent `roles/agentregistry.viewer` and `roles/aiplatform.user` on the Europe agent's resource.",
+    "D": "Grant the North America agent's principal `roles/agentregistry.admin` on the registry, and `roles/aiplatform.user` on the Europe agent's reasoning engine resource only."
    },
    "answer": "A",
    "why": {
-    "A": "When initiating A2A communication, the invoking parent agent acts as the principal. To discover the remote agent, the parent agent's SPIFFE principal string (`principal://agents.global.org-...`) requires `roles/agentregistry.viewer` on the registry. To send messages to the sub-agent, it requires `roles/aiplatform.user` on the target sub-agent's reasoning engine resource.",
-    "B": "Granting `roles/owner` to a human developer violates least privilege and does not grant the automated agent runtime process the necessary permissions.",
-    "C": "Agent identities eliminate long-lived service account JSON keys. Storing raw service account keys in `.env` files violates enterprise security controls.",
-    "D": "`Inspect only` mode in Model Armor logs findings without granting IAM invocation permissions."
+    "A": "The calling agent's identity is the principal that needs access. It needs to read the registry to discover the Europe agent and to invoke only that one reasoning engine. Granting at resource level keeps the other 20 agents out of reach.",
+    "B": "A project-level `aiplatform.user` grant allows the North America agent to call every agent in the subsidiary's project.",
+    "C": "The deployment pipeline's service account is not the identity the running agent uses, so the agent would still be denied.",
+    "D": "The admin role allows registry entries to be changed, which is far more than discovery needs."
    }
   },
   {
    "id": "s5q3",
    "scenario": 5,
    "number": 3,
-   "header": "Domain 5 - Agent Gateway Egress & Network Governance",
+   "header": "Domain 5 - Governing Outbound Agent Traffic",
    "domains": [
     5
    ],
-   "context": "Enterprise security rules dictate that all outbound A2A network calls originating from the North America Agent targeting external agents or APIs must be intercepted, validated against approved destinations, and inspected for sensitive data leaks.",
-   "goal": "Configure centralized network governance for outbound agent traffic.",
-   "constraints": [
-    "Must enforce a strict **default-deny** posture for all outbound connections.",
-    "Essential Google Cloud platform APIs required by the agent runtime must be explicitly allowlisted to prevent execution failures."
-   ],
-   "prompt": "Which configuration sequence should you deploy?",
+   "context": "The North America agent calls the Europe agent and an external carrier-tracking API. Security requires that the agent can reach only approved destinations, that every call is authorized against the agent's own identity, and that outbound payloads are inspected for sensitive data. New destinations must be approved centrally rather than by editing network configuration for each agent.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Bind the agent to an **Agent Gateway operating in Agent-to-Anywhere (egress) mode**, register the Europe Agent endpoint in **Agent Registry**, and allowlist essential platform endpoints (e.g., `aiplatform.googleapis.com`, `logging.googleapis.com`) in the registry.",
-    "B": "Attach a Client-to-Agent (ingress) gateway to the North America Agent and disable mTLS certificate verification.",
-    "C": "Deploy a Cloud NAT gateway in the VPC network and grant `roles/run.invoker` to all users in the organization.",
-    "D": "Write a custom Python callback using `after_agent_callback` to intercept raw TCP network socket packets."
+    "A": "Create VPC firewall egress rules with FQDN objects that allow only the Europe agent's endpoint and the carrier API's hostname, and deny all other egress from the agent's subnet.",
+    "B": "Route the agent's outbound traffic through Secure Web Proxy with a URL list that contains the Europe agent's endpoint and the carrier API, and log all requests.",
+    "C": "Rely on the Europe agent's IAM check to reject unauthorized callers, and store the carrier API key in Secret Manager so that only the North America agent can read it.",
+    "D": "Route the agent's outbound traffic through Agent Gateway in Agent-to-Anywhere mode, register both destinations in Agent Registry, and attach a Model Armor template to inspect payloads."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "**Agent Gateway in Agent-to-Anywhere (egress) mode** intercepts outbound agent communications. It enforces IAM access policies, verifies target endpoints in **Agent Registry**, and applies Model Armor filters. Because Agent Gateway enforces a strict *default deny* posture, essential platform APIs (such as `aiplatform.googleapis.com`, `logging.googleapis.com`, `secretmanager.googleapis.com`) must be allowlisted in Agent Registry to avoid runtime 498 initialization errors.",
-    "B": "Client-to-Agent (ingress) mode governs incoming client requests to the agent, not outbound agent-to-agent calls. Disabling mTLS breaks Context-Aware Access security baselines.",
-    "C": "Cloud NAT provides basic outbound IP translation; it cannot perform A2A protocol parsing, Agent Registry validation, or Model Armor payload inspection.",
-    "D": "Python application callbacks operate inside the LLM runtime code; they cannot replace network-layer gateway enforcement or manage VPC egress security."
+    "D": "In egress mode, Agent Gateway intercepts the agent's outbound calls, checks the agent's identity against IAM, allows only destinations registered in Agent Registry (default deny), and applies Model Armor inspection. Approving a new destination means registering it in Agent Registry, not changing network rules.",
+    "A": "Firewall rules filter by address or hostname only. They have no concept of the calling agent's identity, do not inspect payloads, and must be edited for each new destination.",
+    "B": "Secure Web Proxy filters URLs, but it does not authorize calls per agent identity, does not use the central agent catalog, and does not apply Model Armor inspection.",
+    "C": "It protects the Europe agent's side, but nothing limits where the North America agent can send traffic, and no payloads are inspected."
    }
   },
   {
    "id": "s5q4",
    "scenario": 5,
    "number": 4,
-   "header": "Domain 3 - Artifacts & Long-Running Tool Operations in A2A",
+   "header": "Domain 3 - Long-Running Tasks & Artifacts",
    "domains": [
     3
    ],
-   "context": "When the North America Agent invokes the Europe Agent to inspect an international container, the Europe Agent executes an asynchronous tool that scans customs databases and generates a PDF report. The operation takes 50 seconds to complete.",
-   "goal": "Ensure the A2A interaction completes successfully without incurring HTTP connection timeouts or losing the generated PDF.",
-   "constraints": [
-    "Must use built-in A2A protocol capabilities supported by ADK.",
-    "Must pass the binary PDF report back to the calling agent as a structured artifact."
-   ],
-   "prompt": "Which mechanism does the A2A protocol use to satisfy these requirements?",
+   "context": "The North America agent currently calls the Europe agent through a custom tool that sends a synchronous HTTP POST and waits for the response. A customs inspection can take up to 4 minutes, and the calls fail when the client times out after 60 seconds. The Europe agent's final output is a customs PDF. A teammate proposes raising all timeouts to 10 minutes.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "A2A natively supports **long-running tools** by tracking asynchronous task status updates across streaming messages and uses **A2A Artifacts** to transmit binary files between agents.",
-    "B": "A2A converts binary PDF files into raw text strings inside system prompts and forces synchronous 5-second HTTP REST timeouts.",
-    "C": "The calling agent must save the PDF to a local container `/tmp/` folder and share the local file path string over a gRPC header.",
-    "D": "The sub-agent stores the PDF in a Dialogflow CX Custom Entity table."
+    "A": "Raise the tool's HTTP client timeout and the Europe service's request timeout to 10 minutes, and return the PDF base64-encoded in the JSON response body.",
+    "B": "Switch to A2A: the Europe agent returns a task immediately, sends status updates while the inspection runs, and delivers the PDF as an artifact when the task is complete.",
+    "C": "Have the Europe agent write the PDF to a shared Cloud Storage bucket when it finishes, and have the North America agent's tool check the bucket every 10 seconds until the file appears.",
+    "D": "Split the request into two tools: one that starts the inspection and returns immediately, and one that the model calls repeatedly until the inspection result is returned as text."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "The ADK **A2A protocol integration** explicitly supports three core capabilities: (1) preserving reasoning/thought traces, (2) tracking **long-running tools** via task status updates to prevent HTTP timeouts, and (3) passing **binary file artifacts** (like generated PDFs) between independent agents over the network.",
-    "B": "Embedding binary PDFs as raw text in system prompts consumes massive context tokens and causes prompt corruption. Standard synchronous REST calls would time out after 50 seconds.",
-    "C": "Local container `/tmp/` paths are ephemeral and local to the Europe agent's container; they are completely unreachable by a remote agent running in a separate project across network boundaries.",
-    "D": "Dialogflow CX custom entities are designed for intent parameter extraction, not for storing or transferring binary PDF artifacts across ADK A2A agents."
+    "B": "A2A is task-based. Long-running work is tracked through task status updates instead of an open HTTP request, and binary outputs are returned as artifacts. This is the built-in way to handle both requirements.",
+    "A": "It works until an inspection takes longer than the new limit. It also keeps connections open for minutes, which proxies and load balancers may cut, and it inflates the response with a base64 PDF.",
+    "C": "It works, but it is a custom coordination mechanism that needs cross-project bucket permissions and polling, reimplementing what A2A already provides.",
+    "D": "Having the model poll wastes calls and tokens, and returning the inspection result as text still does not deliver the PDF."
    }
   },
   {
    "id": "s5q5",
    "scenario": 5,
    "number": 5,
-   "header": "Domain 3 & Domain 5 - SPIFFE Identity Lifecycle Management",
+   "header": "Domain 3 & Domain 5 - Agent Identity Lifecycle",
    "domains": [
     3,
     5
    ],
-   "context": "Due to an infrastructure upgrade, the Europe Logistics Agent reasoning engine instance is deleted and re-deployed in the same project and region with identical source code, system instructions, and display name.",
-   "goal": "Maintain security and access control for the newly deployed Europe Agent instance.",
-   "constraints": [
-    "Must understand how Google Cloud manages SPIFFE identity lifecycle and IAM bindings upon re-deployment.",
-    "Must restore cross-project A2A invocation access for the North America Agent."
-   ],
-   "prompt": "Which action must the cloud security architect perform?",
+   "context": "During an infrastructure upgrade, the subsidiary deleted the Europe agent and re-created it in the same project and region, with the same code and display name. Since then, the Europe agent receives `403 PERMISSION_DENIED` when it reads the customs-rules bucket. The bucket's IAM policy still shows a binding for the Europe agent's principal from before the upgrade.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Query the new agent's **`spec.effectiveIdentity`** SPIFFE principal identifier and apply the required IAM allow policies to the new principal, because re-deploying an agent generates a new resource ID and a new SPIFFE principal string.",
-    "B": "Do nothing, because SPIFFE IDs are bound to the agent's display name and automatically inherit all previous IAM bindings.",
-    "C": "Manually extract the deleted agent's X.509 certificate from Secret Manager and import it into the new container image.",
-    "D": "Change the agent's identity type to a shared legacy service account and disable mTLS Context-Aware Access."
+    "A": "Wait up to seven minutes for IAM changes to propagate after the redeployment, and retry the request before changing any permissions on the bucket.",
+    "B": "Restart the Europe agent so that Agent Runtime provisions a fresh X.509 certificate for its identity, which re-establishes the existing bucket binding.",
+    "C": "Read the re-created agent's effective identity from its deployment, and grant the bucket role to that principal, replacing the binding for the old one.",
+    "D": "Redeploy the agent again, this time with the original display name set explicitly in the configuration, so that its SPIFFE identity matches the existing binding."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "An agent's SPIFFE principal identifier includes its unique underlying resource ID (e.g., `.../reasoningEngines/NEW_AGENT_ID`). When an agent is deleted and re-deployed—even with identical code and display names—it receives a **new resource ID and a new SPIFFE principal identifier**. Deleting the old agent leaves its IAM bindings inactive. Architects must retrieve the new `spec.effectiveIdentity` string and grant the required IAM roles to the new principal.",
-    "B": "SPIFFE IDs are derived from immutable resource URIs, not display names. Old IAM bindings remain as inactive grants and do not automatically transfer to the new resource ID.",
-    "C": "X.509 certificates are automatically provisioned and managed by Google Cloud with 24-hour validity periods; manually copying expired certificates is unsupported and breaks mTLS binding.",
-    "D": "Downgrading to shared service accounts violates least privilege access, increases blast radius, and disables default Context-Aware Access security baselines."
+    "C": "An agent's SPIFFE identity includes its resource ID. A re-created agent gets a new ID and a new principal, so bindings for the old principal no longer apply. The fix is to grant roles to the new principal, or to use a project-scoped `principalSet` binding so that future re-creations do not break access.",
+    "A": "Nothing was changed in IAM, so there is nothing to propagate. The binding is for a principal that no longer exists.",
+    "B": "Certificates are provisioned and rotated automatically, and a new certificate does not change which principal the identity represents.",
+    "D": "The display name is not part of the SPIFFE ID, so redeploying with any name produces yet another new principal."
    }
   },
   {
    "id": "s6q1",
    "scenario": 6,
    "number": 1,
-   "header": "Domain 4 - `agents-cli eval` CLI Suite",
+   "header": "Domain 4 - `agents-cli eval` Commands",
    "domains": [
     4
    ],
-   "context": "A digital publishing company is setting up an automated evaluation step inside a CI/CD pipeline for its news-summarization agent. The pipeline needs to execute a single CLI command that dispatches prompts from a benchmark dataset, records agent tool-execution trajectories, grades final outputs against autorater metrics, and exports the structured results to a JSON file.",
-   "goal": "Select the correct `agents-cli` command to run both trajectory generation and autorater grading in a single unified execution step.",
+   "context": "A publishing company's pipeline deploys each candidate news-summarization agent to staging. The pipeline must then run the golden dataset against the candidate, score the results with the autorater, and show reviewers a side-by-side diff against the scores of the version currently on the main branch, which are stored as a JSON artifact.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which command should you execute in the pipeline script?",
+   "prompt": "Which commands should the pipeline run?",
    "options": {
-    "A": "`agents-cli eval run --dataset tests/eval/datasets/news-golden.json --output artifacts/grade_results.json`",
-    "B": "`gcloud ai models eval create --dataset gs://news-bucket/news-golden.csv`",
-    "C": "`agents-cli playground --auto-grade --dataset news-golden.json`",
-    "D": "`agents-cli deploy --d cloud_run --force-eval`"
+    "A": "`agents-cli eval generate` against the candidate, followed by `agents-cli eval compare` between the generated traces and the stored baseline results.",
+    "B": "`agents-cli eval run` against the candidate, followed by `agents-cli eval compare` between the new results and the stored baseline results.",
+    "C": "`agents-cli eval run` against the candidate, followed by `agents-cli eval analyze` on the new results together with the stored baseline results.",
+    "D": "`agents-cli eval grade` on the golden dataset, followed by `agents-cli eval compare` between the grading output and the stored baseline results."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "In the `agents-cli eval` toolchain, **`agents-cli eval run`** chains both generation (`agents-cli eval generate`) and grading (`agents-cli eval grade`) in a single command. It runs test prompts against the agent, evaluates reasoning steps/outputs against specified metrics, and exports the results to an output artifact file.",
-    "B": "`gcloud ai models eval` is a legacy command for evaluating static Vertex AI AutoML/custom models; it does not execute ADK agent trajectories, tool calls, or `agents-cli` evaluation frameworks.",
-    "C": "`agents-cli playground` launches an interactive local browser UI for manual developer testing; it is not a headless command designed for automated CI/CD pipelines.",
-    "D": "`agents-cli deploy` handles container image building and deployment to target runtimes; it does not execute evaluation datasets or grade metrics."
+    "B": "`eval run` chains `generate` (runs the dataset against the agent) and `grade` (scores the traces) in one step. `eval compare` then produces the side-by-side diff between the baseline and candidate results.",
+    "A": "`generate` only produces traces; without `grade` there are no scores to compare.",
+    "C": "`analyze` groups failures into clusters to explain what went wrong. It does not produce a baseline-versus-candidate diff.",
+    "D": "`grade` scores traces that already exist. Run on its own, it has no candidate traces to score."
    }
   },
   {
    "id": "s6q2",
    "scenario": 6,
    "number": 2,
-   "header": "Domain 4 - Cloud Build Quality Gates & Pipeline Enforcement",
+   "header": "Domain 4 - Cloud Build Quality Gates",
    "domains": [
     4
    ],
-   "context": "A publishing team configures a Cloud Build CI/CD pipeline triggered on every pull request. The pipeline temporarily deploys the candidate agent to a Staging environment and executes `agents-cli eval run`.",
-   "goal": "Configure Cloud Build to automatically halt the deployment pipeline and block the pull request if the agent's `groundedness` score falls below `4.0` out of `5.0`.",
-   "constraints": [
-    "Must enforce an automated quality gate without human intervention.",
-    "The build pipeline must return a non-zero exit code (`exit 1`) when quality thresholds are violated."
-   ],
-   "prompt": "Which build configuration step should you implement in `cloudbuild.yaml`?",
+   "context": "Your `cloudbuild.yaml` has an evaluation step that runs `agents-cli eval run`, followed by a deploy step. Last week, a candidate whose groundedness score was 3.6 was deployed, even though the team's minimum is 4.0. The evaluation step's logs show the low score, and the step finished successfully. The release must be blocked automatically when the score is too low.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Include a post-evaluation build step script that parses the resulting `grade_results.json` file, evaluates `if groundedness_score < 4.0`, and explicitly executes `exit 1` to fail the build.",
-    "B": "Deploy Model Armor in `Inspect only` mode on the Staging environment and configure Cloud Logging to send email notifications.",
-    "C": "Set `ALLOW_FAILED_EVALS=true` in `agents-cli-manifest.yaml` and rely on manual reviewer approval in GitHub.",
-    "D": "Configure an IAM Policy Binding checking `roles/cloudbuild.builds.editor` on the pull request author."
+    "A": "Set `allowFailure: false` on the evaluation step, so that Cloud Build stops the pipeline instead of continuing to the deploy step whenever the evaluation does not pass.",
+    "B": "Create a log-based metric for the groundedness score in the evaluation output, and add a Cloud Monitoring alert that notifies the release manager when the score is below 4.0.",
+    "C": "Move the threshold check into a separate Cloud Build trigger that runs after each deployment and rolls back to the previous release if groundedness is below 4.0.",
+    "D": "Add a step between evaluation and deployment that reads the groundedness score from the evaluation results and exits with a non-zero code when it is below 4.0."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "Cloud Build quality gates rely on step exit codes. By adding a post-evaluation script step that inspects the generated `grade_results.json` metric values and returns a non-zero status (`exit 1`) when `groundedness < 4.0`, Cloud Build immediately halts the pipeline, preventing ungrounded candidate code from merging or deploying to production.",
-    "B": "Model Armor in `Inspect only` mode logs findings to Cloud Logging without blocking requests or failing CI/CD build pipelines.",
-    "C": "Setting flags to allow failed evals and relying on manual review removes automated pipeline enforcement and risks deploying ungrounded models to production.",
-    "D": "IAM roles grant build execution permissions; they do not evaluate model quality metrics or enforce threshold gates."
+    "D": "`eval run` reports scores but exits successfully, so Cloud Build has no failure to act on. A gate step that compares the score with the threshold and exits non-zero fails the build before the deploy step runs.",
+    "A": "`allowFailure: false` is already the default. The step did not fail, because the evaluation command exited successfully, so this setting changes nothing.",
+    "B": "An alert tells a person about the problem; it does not stop the release automatically.",
+    "C": "The poor candidate still reaches production before being rolled back, so users are exposed to it."
    }
   },
   {
    "id": "s6q3",
    "scenario": 6,
    "number": 3,
-   "header": "Domain 4 - Trajectory vs. Final Output Evaluation Metrics",
+   "header": "Domain 4 - Trajectory Metrics",
    "domains": [
     4
    ],
-   "context": "The news-summarization agent follows a multi-step reasoning workflow: `Search_Article_Database` → `Extract_Full_Text` → `Generate_Summary`. During testing, developers notice that candidate prompt changes sometimes cause the agent to skip `Extract_Full_Text` and attempt to summarize short search snippets directly, resulting in incomplete summaries.",
-   "goal": "Select the evaluation lens and metric combination that specifically detects when required intermediate tool-invocation steps are skipped or called out of order.",
+   "context": "The summarization agent is expected to call `Search_Article_Database`, then `Extract_Full_Text`, then `Generate_Summary`. After a prompt change, some summaries became shallow. Traces show that the agent sometimes skips `Extract_Full_Text` and summarizes the search snippet. The CI groundedness gate still passed, because those summaries are faithful to the snippet the agent retrieved.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which evaluation approach should you configure?",
+   "prompt": "What should you add to the evaluation?",
    "options": {
-    "A": "Evaluate **Trajectory and Tool Use** using **Tool Sequence Match (In-Order Match)** and **Tool Recall** metrics.",
-    "B": "Evaluate **Final Output** using `ROUGE-L` text overlap scores against historical human summaries.",
-    "C": "Attach a Model Armor template configured with Sensitive Data Protection (SDP) infotypes.",
-    "D": "Store intermediate tool names in the `user:` state namespace and inspect session history manually."
+    "A": "Expected tool sequences in the golden dataset, scored with an in-order trajectory match and tool recall metric, with a threshold in the CI gate.",
+    "B": "A tool precision metric in the CI gate, which measures how many of the agent's tool calls were needed to produce the expected summary.",
+    "C": "A higher groundedness threshold in the CI gate, so that summaries that are only partly supported by the retrieved context fail more often.",
+    "D": "A ROUGE-L comparison between each generated summary and a human-written reference summary, with a minimum overlap threshold in the CI gate."
    },
    "answer": "A",
    "why": {
-    "A": "Agent evaluation consists of two distinct lenses: (1) **Trajectory and Tool Use** (evaluating reasoning steps) and (2) **Final Output** (evaluating the final response). Detecting skipped or out-of-order tool calls requires inspecting the trajectory using **Tool Sequence Match / Exact Match** (verifying execution order) and **Tool Recall** (verifying all required tools were called).",
-    "B": "Evaluating only the final output with ROUGE-L checks surface text similarity; it completely misses underlying reasoning trajectory failures and tool-skipping logic bugs.",
-    "C": "Model Armor inspects prompt injection and PII; it does not evaluate tool execution trajectories or metric sequences.",
-    "D": "Storing temporary tool names in the `user:` state namespace pollutes long-term user memory and requires manual inspection rather than automated CI/CD metric evaluation."
+    "A": "The failure is in the agent's trajectory, not in the faithfulness of its output. In-order matching catches steps that are missing or out of order, and recall catches required tools that were never called.",
+    "B": "Precision penalizes unnecessary calls. A skipped call is a missing call, which precision does not detect.",
+    "C": "The summaries are grounded in the snippet, which is valid tool context, so a higher threshold still passes them.",
+    "D": "Text overlap may drop slightly, but it measures surface similarity. It does not identify the skipped step reliably and is sensitive to harmless wording changes."
    }
   },
   {
    "id": "s6q4",
    "scenario": 6,
    "number": 4,
-   "header": "Domain 4 - Golden Datasets & Benchmark Stabilization",
+   "header": "Domain 4 - Golden Dataset Stability",
    "domains": [
     4
    ],
-   "context": "A junior developer attempts to fix failing evaluation tests by modifying the user prompts inside the `tests/eval/datasets/news-golden.json` test file whenever a candidate agent update fails in Cloud Build. Over time, evaluation pass rates appear high, but production users report severe quality regressions.",
-   "goal": "Restore sound AgentOps evaluation practices and ensure evaluation trends accurately measure model performance over time.",
-   "constraints": [
-    "Test cases must provide a stable, objective baseline across prompt iterations and model updates."
-   ],
-   "prompt": "Which AgentOps best practice should the team enforce?",
+   "context": "Over two months, the agent's CI pass rate rose from 72% to 95%, while production complaints about summary quality also rose. The git history shows that the golden dataset file was edited in the same pull requests as prompt changes, often by rewording test prompts that had been failing.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Freeze and stabilize the **Golden Dataset** test prompts and expected ground-truth references so benchmark test cases remain static across candidate code and prompt iterations.",
-    "B": "Delete the golden dataset and evaluate candidate agents live against 100% of production traffic using A/B testing.",
-    "C": "Re-generate the golden dataset dynamically on every git commit using `agents-cli create --prototype`.",
-    "D": "Remove autorater evaluation scripts from Cloud Build and rely exclusively on developer smoke testing."
+    "A": "Replace the golden dataset with 200 production conversations sampled at random on each CI run, so that evaluation always reflects what real users currently ask.",
+    "B": "Switch the autorater to a more capable judge model, so that scores are stricter and harder to pass with superficial changes to the agent's prompts.",
+    "C": "Freeze the golden dataset, version it separately from the agent code with its own review, and compare each candidate against a stored baseline.",
+    "D": "Generate new synthetic test cases from the current prompt on every commit, so that the dataset keeps pace with changes to the agent's behavior."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "A core principle of AgentOps is **dataset stabilization**. A Golden Dataset serves as an immutable benchmark. Modifying test prompts to match broken candidate behavior invalidates historical trends and creates false positives. Test cases must remain frozen so prompt and model changes can be accurately compared against a stable baseline.",
-    "B": "Testing unproven candidate code on 100% of production traffic exposes live users to regressions and violates safe deployment practices.",
-    "C": "Re-generating test sets dynamically on every commit destroys test continuity and prevents tracking performance improvements or regressions over time.",
-    "D": "Disabling automated autorater evals removes quality gates, returning to error-prone manual testing."
+    "C": "Scores are only comparable over time if the test cases stay the same. Editing tests to match the candidate's behavior inflates pass rates and hides regressions. A frozen, separately reviewed dataset restores a stable baseline.",
+    "A": "Random samples change on every run and have no expected references, so results cannot be compared between runs.",
+    "B": "A stricter judge does not fix the real problem, which is that the tests themselves keep being changed to pass.",
+    "D": "Tests generated from the current prompt reflect what the candidate already does, which is the same kind of drift that caused the problem."
    }
   },
   {
    "id": "s6q5",
    "scenario": 6,
    "number": 5,
-   "header": "Domain 4 - Automated System Prompt Optimization",
+   "header": "Domain 4 - Improving Failing Prompts Systematically",
    "domains": [
     4
    ],
-   "context": "A candidate news-summarization agent fails the Cloud Build quality gate because its groundedness score dropped to `3.7` (below the required `4.0` threshold). Rather than manually editing system prompts through tedious trial and error, the lead architect wants to use automated prompt engineering tools built into the framework.",
-   "goal": "Algorithmically optimize system prompt instructions against the golden dataset to improve groundedness scores.",
+   "context": "A candidate failed the CI gate with a groundedness score of 3.7 against a threshold of 4.0. Reviewers see that the agent often adds background facts from the model's own knowledge. Two engineers spent a week editing the system instruction by hand with little progress. The lead wants a systematic, repeatable approach that does not weaken the release standard.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which tool command should you run?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Execute **`agents-cli eval optimize`** (or `adk optimize`), leveraging the GEPA framework to algorithmically refine system instructions against the benchmark evaluation dataset.",
-    "B": "Run `agents-cli deploy --d agent_runtime --force` to override threshold errors.",
-    "C": "Set the model temperature to `2.0` in `app/agent.py`.",
-    "D": "Wrap the root agent in a `ParallelAgent` with `max_iterations=100`."
+    "A": "Run `agents-cli eval optimize` with the golden dataset's reference answers added to the system instruction as few-shot examples, so that the agent learns the expected answers directly.",
+    "B": "Run `agents-cli eval analyze` to cluster the failures, then run `agents-cli eval optimize` to refine the system instruction against the golden dataset, and re-run the CI gate.",
+    "C": "Lower the groundedness threshold to 3.5 for this release, and add a backlog item to raise it back to 4.0 once the prompt has been improved by hand.",
+    "D": "Switch the agent to the most capable model available, re-run the evaluation, and keep the larger model if the groundedness score then meets the threshold."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "ADK and `agents-cli` include automated prompt optimization via **`agents-cli eval optimize`** (powered by the GEPA / `adk optimize` framework). It evaluates failure patterns in evaluation datasets and algorithmically rewrites system instructions to maximize target evaluation metrics (like groundedness) without manual guess-and-check prompt tuning.",
-    "B": "Forcing deployment overrides the quality gate and pushes an ungrounded model into production.",
-    "C": "Setting temperature to `2.0` increases output randomness and hallucinations, further decreasing groundedness.",
-    "D": "`ParallelAgent` runs concurrent branches, not prompt optimization; combining it with `max_iterations` (a `LoopAgent` parameter) is syntactically invalid."
+    "B": "`analyze` identifies the failure patterns, and `optimize` (built on GEPA) refines the instruction iteratively against the evaluation metrics. The result is then validated by the same, unchanged gate.",
+    "A": "Putting the test set's expected answers into the prompt leaks the answers to the test. Scores rise without real improvement, and the model is over-fitted to the benchmark.",
+    "C": "It weakens the release standard, which the lead explicitly wants to avoid.",
+    "D": "It might pass, but it is trial and error rather than a systematic method, it raises cost, and it does not address why the agent adds ungrounded facts."
    }
   },
   {
    "id": "s7q1",
    "scenario": 7,
    "number": 1,
-   "header": "Domain 4 - Selecting Deployment Targets",
+   "header": "Domain 4 - Selecting a Deployment Target",
    "domains": [
     4
    ],
-   "context": "An insurance startup is ready to deploy its new Python ADK claims-processing agent to production. The engineering team wants a deployment target that handles serverless container management, integrates natively with Python ADK, and eliminates cluster or node management overhead.",
-   "goal": "Select the optimal Google Cloud deployment target.",
-   "constraints": [
-    "Must be a **fully managed, serverless** platform natively optimized for Python ADK agent runtimes.",
-    "Must require **zero Kubernetes cluster or node pool management**."
-   ],
-   "prompt": "Which deployment target should you select?",
+   "context": "The insurance startup is deploying a new fraud-triage agent built with Python ADK. The team is three Python developers with no container or Kubernetes experience. They want managed sessions and memory with as little operational work as possible. A separate team already runs several Node.js services on Cloud Run and has offered to host the agent there.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Where should you deploy the fraud-triage agent?",
    "options": {
-    "A": "Deploy the agent to **Agent Runtime** using `agents-cli deploy -d agent_runtime`.",
-    "B": "Deploy the agent as a StatefulSet on Google Kubernetes Engine (GKE) Standard with manual node pool scaling.",
-    "C": "Deploy the agent to a static Compute Engine VM instance running a custom systemd startup script.",
-    "D": "Deploy the agent into an App Engine Flexible environment using custom Docker SSH configurations."
+    "A": "On Cloud Run, using the other team's existing setup, with a Dockerfile for the agent and `DatabaseSessionService` backed by Cloud SQL for sessions.",
+    "B": "On GKE Autopilot, so that Google manages the nodes while the team keeps full control of the agent's pods, scaling policies and networking configuration.",
+    "C": "On Cloud Run functions, deploying the agent as an HTTP-triggered function so that no container image or Dockerfile has to be maintained by the team.",
+    "D": "On Agent Runtime, using `agents-cli deploy -d agent_runtime`, which provides a fully managed runtime for Python ADK agents with managed sessions and memory."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "**Agent Runtime** on Gemini Enterprise Agent Platform is a fully managed, serverless execution environment designed specifically for Python ADK agents. It handles container provisioning, scaling, security isolation, and mTLS identity attestation out of the box without managing clusters or VMs.",
-    "B": "GKE Standard requires managing Kubernetes nodes, pod manifests, and cluster control planes, violating the requirement for zero cluster management.",
-    "C": "Compute Engine VMs are unmanaged infrastructure requiring manual OS patching, scaling, and systemd maintenance.",
-    "D": "App Engine Flexible has higher cold-start latencies, lacks native ADK tooling integration, and requires managing custom app.yaml configurations."
+    "D": "Agent Runtime is built for Python ADK agents. It manages scaling, identity, sessions and memory integration, so a small Python team without container experience has the least to operate.",
+    "A": "Cloud Run is a valid serverless option, but the team would own the container, the session database and the wiring between them, which is more operational work than Agent Runtime for a Python-only ADK agent.",
+    "B": "Autopilot removes node management, but the team still has to write and operate Kubernetes manifests, which it has no experience with.",
+    "C": "Functions are designed for short, event-driven handlers. They do not provide managed agent sessions or memory, and they are a poor fit for a long-running conversational agent."
    }
   },
   {
    "id": "s7q2",
    "scenario": 7,
    "number": 2,
-   "header": "Domain 4 - Canary Deployments & Traffic Splitting",
+   "header": "Domain 4 - Canary Release on Cloud Run",
    "domains": [
     4
    ],
-   "context": "The insurance claims team has updated their agent code (version v2) to incorporate a new policy validation tool. To minimize production risk, they want to test v2 against live customer requests while keeping the majority of traffic on the stable version v1.",
-   "goal": "Implement a canary release strategy.",
-   "constraints": [
-    "Must route exactly **10% of live production traffic** to revision v2 and **90% to revision v1**.",
-    "Traffic splitting must be enforced at the infrastructure/network routing layer without modifying prompt code or system instructions."
-   ],
-   "prompt": "Which strategy should you implement?",
+   "context": "The claims agent runs on Cloud Run. Version 2 adds a new policy-validation tool. Before any customer traffic reaches v2, the QA team wants to test it on the production service. After QA approves it, 10% of customer traffic should go to v2 and 90% should stay on v1. No customer should receive v2 before QA has approved it.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Configure **traffic splitting / revision allocation** on the deployment target (Agent Runtime or Cloud Run) to allocate 90% of incoming requests to revision v1 and 10% to revision v2.",
-    "B": "Add a system instruction in prompt code instructing the LLM to execute v2 logic for 10% of incoming user messages.",
-    "C": "Delete revision v1 immediately and rely on Cloud Build retries if v2 encounters errors.",
-    "D": "Deploy a Model Armor template in `Inspect and block` mode configured to drop 90% of incoming prompts."
+    "A": "Deploy v2 with no traffic and a revision tag, have QA test it through the tag's dedicated URL, and then update traffic to send 10% to v2 and 90% to v1.",
+    "B": "Deploy v2 as a separate Cloud Run service, have QA test that service's URL, and then configure a load balancer with weighted backends that send 10% of traffic to v2.",
+    "C": "Deploy v2 normally, and immediately afterwards update traffic to send 10% to v2 and 90% to v1 so that QA can test with the real customer traffic split in place.",
+    "D": "Deploy v2 with no traffic, and add logic to v1 that forwards 10% of requests to v2 based on a hash of the customer ID, so that each customer consistently sees one version."
    },
    "answer": "A",
    "why": {
-    "A": "Both Agent Runtime and Cloud Run natively support **revision-based traffic splitting**. Allocating 90% of traffic to revision v1 and 10% to revision v2 routes live user requests at the infrastructure layer cleanly without touching application code.",
-    "B": "LLMs cannot perform deterministic traffic percentage routing; embedding routing logic in prompts wastes tokens and causes non-deterministic behavior.",
-    "C": "Deleting v1 creates immediate downtime if v2 fails, defeating the purpose of a canary deployment.",
-    "D": "Model Armor drops invalid/dangerous prompts; it cannot route traffic between application software revisions."
+    "A": "A revision deployed with no traffic and a tag gets its own URL that only QA uses. Once QA approves, a traffic update splits production traffic 90/10 between the revisions. Customers never see v2 before approval.",
+    "B": "It works, but it adds a second service and a load balancer to manage when Cloud Run's built-in revision traffic splitting already provides the same result.",
+    "C": "A normal deploy sends 100% of traffic to v2 until the split is applied, so customers are exposed to v2 before QA approves it.",
+    "D": "It moves routing into application code, which the platform already handles, and adds a code change and an extra network hop for every forwarded request."
    }
   },
   {
    "id": "s7q3",
    "scenario": 7,
    "number": 3,
-   "header": "Domain 4 - Automated Monitoring & Zero-Downtime Rollback",
+   "header": "Domain 4 - Rollback",
    "domains": [
     4
    ],
-   "context": "During the 90/10 canary rollout of claims agent v2, Cloud Monitoring detects a spike in 5xx HTTP errors and a 3-second increase in average response latency on revision v2.",
-   "goal": "Revert production traffic back to stable revision v1 instantly to protect customer experience.",
-   "constraints": [
-    "Must achieve **zero-downtime rollback**.",
-    "Must update network routing configuration to send 100% of traffic back to revision v1 without re-building container images."
-   ],
-   "prompt": "Which action should the operations team take?",
+   "context": "Twenty minutes into the 90/10 canary, Cloud Monitoring shows that the v2 revision's 5xx error rate has jumped to 8%. Revision v1 is still deployed and healthy. The on-call engineer must stop customer impact as quickly as possible, and the development team wants to investigate the v2 revision afterwards.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should the on-call engineer do?",
    "options": {
-    "A": "Trigger an automated or one-click traffic update setting **100% traffic allocation to revision v1** in Agent Runtime or Cloud Run.",
-    "B": "Re-run `agents-cli create --prototype` locally and upload the resulting zip file to Cloud Storage.",
-    "C": "Delete the Google Cloud Project and restore all resources from cold tape backups.",
-    "D": "Increase model temperature to `2.0` on revision v2 to bypass latency checks."
+    "A": "Redeploy the v1 container image from Artifact Registry as a new revision with 100% of traffic, so that the service is guaranteed to run a known-good build.",
+    "B": "Revert the v2 commit in the repository and let the CI/CD pipeline rebuild, evaluate and deploy the previous version through the normal release process.",
+    "C": "Update the service's traffic settings to send 100% of traffic to the existing v1 revision, and leave the v2 revision deployed with no traffic.",
+    "D": "Delete the v2 revision, so that Cloud Run automatically sends all of its traffic back to the remaining healthy v1 revision."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "Revision management in serverless platforms keeps previous container revisions active in the background. Updating the traffic allocation map to set 100% traffic to revision v1 instantly reroutes network traffic at the gateway, completing a zero-downtime rollback in seconds.",
-    "B": "Creating a new prototype locally requires rebuilding and re-testing code, taking minutes or hours while live production users experience errors.",
-    "C": "Deleting the GCP project causes catastrophic enterprise downtime and data loss.",
-    "D": "Raising model temperature increases hallucination rates and randomness; it does not resolve backend code exceptions or network latency."
+    "C": "A traffic update takes effect in seconds, needs no build, and sends everyone to the known-good revision. The v2 revision stays available, without traffic, for investigation.",
+    "A": "It works, but it creates and starts a new revision, which is slower than moving traffic to the v1 revision that is already running.",
+    "B": "A full build, evaluation and deploy cycle takes minutes to hours, during which customers keep receiving errors.",
+    "D": "Cloud Run does not let you delete a revision that is receiving traffic, and deleting it would also remove what the team needs to investigate."
    }
   },
   {
    "id": "s7q4",
    "scenario": 7,
    "number": 4,
-   "header": "Domain 4 - Cold-Start Optimization",
+   "header": "Domain 4 - Cold Starts",
    "domains": [
     4
    ],
-   "context": "Claims processing agents experience sudden traffic spikes during major storm events. When scaling up from zero instances, the initial request on a new container instance experiences a 2.5-second \"cold start\" delay while initializing Python dependencies and pre-loading embeddings.",
-   "goal": "Eliminate cold-start latency for baseline user traffic during critical operational windows.",
-   "constraints": [
-    "Must guarantee that at least one container instance remains warm and ready to serve incoming requests instantly.",
-    "Must preserve serverless autoscaling capabilities for traffic bursts beyond baseline capacity."
-   ],
-   "prompt": "Which configuration parameter should you adjust on the deployment revision?",
+   "context": "Claims traffic is close to zero overnight and rises sharply during storms. The first requests to each new instance take about 2.5 seconds longer while dependencies load. The business wants the first claims of a storm to be answered without that delay, while keeping overnight costs low and still scaling for storm peaks.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Set **minimum instances (`min_instances = 1` or higher)** on the deployment revision configuration.",
-    "B": "Disable autoscaling and pin CPU allocation to 100% permanent utilization.",
-    "C": "Store container images on local developer laptops instead of Google Artifact Registry.",
-    "D": "Convert all Python ADK code into shell scripts executed via local bash tools."
+    "A": "Change the service's billing to instance-based billing (CPU always allocated), so that instances keep their loaded dependencies ready between requests.",
+    "B": "Set a small minimum number of instances, such as 1 or 2, and enable startup CPU boost, while keeping a maximum that is high enough for storm peaks.",
+    "C": "Create a Cloud Scheduler job that sends a request to the service every minute, so that Cloud Run keeps an instance running and does not scale it down to zero.",
+    "D": "Set the minimum number of instances to the number needed for a typical storm peak, so that the full storm capacity is always running and ready."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "Setting **`min_instances`** (e.g., `min_instances = 1`) ensures the platform keeps pre-warmed container instances running at all times. Incoming baseline requests hit warm containers with zero cold-start latency, while autoscaling dynamically provisions additional instances during traffic spikes.",
-    "B": "Disabling autoscaling prevents the system from expanding capacity during storm traffic spikes, leading to request queueing or crashes.",
-    "C": "Storing container images locally makes them unreachable by Google Cloud serverless deployment engines.",
-    "D": "Converting Python ADK agent code to shell scripts destroys framework structure, state management, and tool integration."
+    "B": "Minimum instances keep a small warm baseline, so the first requests avoid the cold start, and autoscaling still adds instances for peaks. Startup CPU boost shortens the start time of the instances added during a spike.",
+    "A": "CPU allocation affects how instances are billed and whether they have CPU between requests; with a minimum of zero, the service still scales to zero and cold-starts.",
+    "C": "A workaround with no guarantee. Cloud Run can still replace or scale down the instance, and it adds unnecessary requests.",
+    "D": "It removes cold starts but pays for storm-level capacity all night, which breaks the cost requirement."
    }
   },
   {
@@ -1138,439 +1047,413 @@ window.EXAM_DATA = {
     3,
     4
    ],
-   "context": "During a 90/10 canary split between agent revisions v1 and v2, a customer engages in a multi-turn conversation. Because traffic splitting operates per request, turn 1 is routed to revision v1, while turn 2 is routed to revision v2.",
-   "goal": "Ensure the user's session history and active state remain fully accessible when switching between revisions mid-conversation.",
-   "constraints": [
-    "Must NOT store session state inside ephemeral local container instance memory.",
-    "Must enforce schema compatibility for `session.state` across candidate code revisions."
-   ],
-   "prompt": "Which architectural combination guarantees session continuity?",
+   "context": "The claims agent stores sessions in `DatabaseSessionService`. In v2, the developers renamed the state key `claim_step` to `claim_stage` and changed its values from integers to strings. During the 90/10 canary, some customers' conversations restart from the beginning. Traces show their turns alternating between v1 and v2 revisions within the same session.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Externalize short-term state using **`DatabaseSessionService`** (Cloud SQL / AlloyDB) or **`Agent Platform Sessions`**, and maintain backwards-compatible `session.state` schema definitions between v1 and v2.",
-    "B": "Save `session.state` to the local `/tmp/` directory of the v1 container instance and send local HTTP pings to v2.",
-    "C": "Force the user's browser to store the full session history in HTTP cookies up to 10MB.",
-    "D": "Disable session history completely and require users to re-submit full conversation context on every turn."
+    "A": "Enable session affinity on the service, so that each customer's turns stay on the revision that served their first request for the whole conversation.",
+    "B": "Configure v1 and v2 to use separate session databases, so that each revision always reads state in the format it expects and cannot corrupt the other.",
+    "C": "Before continuing the canary, run a script that converts every existing session to the new `claim_stage` key and string values used by v2.",
+    "D": "Change v2 to read either key and to keep writing `claim_step` in the old format alongside `claim_stage` until v1 is retired, then remove the old key."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "Externalizing session storage to a central, persistent service (`DatabaseSessionService` or `Agent Platform Sessions`) ensures that any instance—regardless of revision—can fetch and write to the active session. Maintaining schema compatibility between v1 and v2 prevents version mismatches when user turns hit different revisions.",
-    "B": "Container `/tmp/` directories are isolated to individual container instances. Container instance v2 cannot read local disk files from container instance v1.",
-    "C": "HTTP cookies are subject to strict browser size limits (~4KB), exposing conversation history to tampering and bandwidth bloat.",
-    "D": "Disabling sessions severely degrades user experience by requiring users to re-explain their context on every turn."
+    "D": "Because traffic is split per request, both revisions read and write the same sessions during the canary. An expand-and-contract change keeps the state readable by both versions and removes the old key only after v1 no longer serves traffic.",
+    "A": "Session affinity is best effort. When instances scale or restart, a customer can still move to the other revision and hit the incompatible state.",
+    "B": "A customer who moves between revisions would find no session at all in the other database, which makes the problem worse.",
+    "C": "v1 still serves 90% of traffic and does not understand the new key and format, so migrating every session breaks the majority of conversations."
    }
   },
   {
    "id": "s8q1",
    "scenario": 8,
    "number": 1,
-   "header": "Domain 4 - OpenTelemetry Span Hierarchies in Cloud Trace",
+   "header": "Domain 4 - Distributed Tracing Across Services",
    "domains": [
     4
    ],
-   "context": "A SaaS enterprise operates a multi-agent system built with the Agent Development Kit (ADK). Support engineers report that complex user requests occasionally take over 30 seconds to complete. The engineering team needs to trace request execution to identify whether latency is caused by LLM model generation time, database tool execution, or network serialization.",
-   "goal": "Instrument the application to visualize nested execution steps in Google Cloud Trace.",
-   "constraints": [
-    "Must wrap each overall user interaction turn as a **root/parent span**.",
-    "Must capture individual LLM prompt/response generations and tool API invocations as **nested child spans** under the active turn."
-   ],
-   "prompt": "Which instrumentation approach should you implement?",
+   "context": "A SaaS company's ADK agent sometimes takes more than 30 seconds to answer. The agent calls an MCP server on Cloud Run, which queries AlloyDB. Current logs show only each request's total duration. Engineers need to see, for a single slow request, how long each model call took, how long each tool call took, and whether a slow tool call was spent in the MCP server's database queries or somewhere else.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Instrument the ADK runtime with an **OpenTelemetry (OTel) TracerProvider** exporting to Google Cloud Trace, wrapping user turns in parent spans and tool/model invocations in child spans.",
-    "B": "Print `console.log()` statements to stdout and search raw string logs in Cloud Logging using basic text filters.",
-    "C": "Configure Model Armor in `Inspect and block` mode to capture request duration headers.",
-    "D": "Store raw execution timestamps in the `user:` state namespace in ADK."
+    "A": "Enable OpenTelemetry tracing in the agent with the Cloud Trace exporter, so that each turn, model call and tool call is recorded as a nested span in one trace.",
+    "B": "Add structured JSON log entries with timing fields at the start and end of each model and tool call in the agent and the MCP server, and build log-based latency metrics.",
+    "C": "Enable OpenTelemetry tracing with the Cloud Trace exporter in both the agent and the MCP server, and propagate the trace context in the headers of the agent's MCP requests.",
+    "D": "Enable Cloud Profiler on the agent and the MCP server, and compare CPU and wall-time profiles of slow periods with profiles of normal periods to find the bottleneck."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "OpenTelemetry (OTel) provides standardized distributed tracing. By configuring an OTel TracerProvider exporting to Google Cloud Trace, the agent runtime automatically wraps the overall user turn in a **parent span** and nests individual LLM calls, tool executions, and sub-agent invocations as **child spans**. This visualizes exact execution duration and bottlenecks across non-deterministic reasoning loops.",
-    "B": "Unstructured `console.log()` stdout messages produce isolated log entries without parent-child correlation, making it impossible to reconstruct nested execution timelines or trace multi-step reasoning cascades.",
-    "C": "Model Armor is an inline content-sanitization and security policy engine; it does not generate application-level OpenTelemetry trace spans or measure internal tool execution latencies.",
-    "D": "Storing execution timestamps in `user:` state pollutes long-term user session history across turns and does not integrate with Cloud Trace observability dashboards."
+    "C": "Nested OTel spans show where time goes within a turn. Propagating trace context to the MCP server extends the same trace into the server, so its database spans appear under the agent's tool span.",
+    "A": "It shows each tool call's total duration from the agent's side, but not what happened inside the MCP server, which the engineers explicitly need.",
+    "B": "Separate log entries have no parent-child relationship, so reconstructing the path of one request across services is manual and unreliable.",
+    "D": "Profiles aggregate CPU and wall time across many requests. They do not show the sequence of calls within one specific slow request."
    }
   },
   {
    "id": "s8q2",
    "scenario": 8,
    "number": 2,
-   "header": "Domain 4 - BigQuery Telemetry Streaming for Token Cost Analytics",
+   "header": "Domain 4 - Token Cost Analytics",
    "domains": [
     4
    ],
-   "context": "Finance and operations teams need to track token consumption, cost trends, and model latency across 100,000 daily user sessions. They require a centralized analytics environment to run SQL queries, calculate cost per user session, and detect token-heavy prompt regressions.",
-   "goal": "Stream agent execution telemetry, prompt/response token counts, and session metadata into a scalable analytics data warehouse.",
-   "constraints": [
-    "Must continuously stream telemetry **without modifying core agent business logic** or adding custom database write steps inside tool code.",
-    "Must enable running ad-hoc SQL analytical queries over historical conversation telemetry."
-   ],
-   "prompt": "Which architecture should you deploy?",
+   "context": "The finance team wants to calculate cost per session and per agent, and track token-usage trends over the past 13 months, using SQL. The platform team does not want to change any tool code. The agents already send traces to Cloud Trace.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Enable automated **BigQuery Agent Analytics streaming** (via Cloud Logging log sinks or the ADK BigQuery Telemetry plugin) to stream prompt/response token metadata directly into BigQuery tables.",
-    "B": "Write custom Python code inside every tool function that executes `INSERT INTO` statements against a Cloud SQL instance.",
-    "C": "Store full prompt/response payloads in local container `/tmp/` text files and download them manually via SSH.",
-    "D": "Save token counts into the `temp:` state namespace in ADK."
+    "A": "Enable ADK's BigQuery Agent Analytics plugin, so that agent events, including model token counts and session IDs, are streamed into BigQuery tables for SQL analysis.",
+    "B": "Query token counts from the span attributes in Cloud Trace, and give the finance team access to the Trace explorer to filter and aggregate spans by session and agent.",
+    "C": "Record token counts as Cloud Monitoring custom metrics labeled with session ID and agent name, and build dashboards that show cost per session and per agent.",
+    "D": "Add a step to each tool that inserts the current model's token counts, the session ID and the agent name into a Cloud SQL table after the tool finishes running."
    },
    "answer": "A",
    "why": {
-    "A": "Streaming agent telemetry directly into **BigQuery** (using ADK observability plugins or Cloud Logging export sinks) continuously captures prompt/response metadata, input/output token counts, model latency, and session IDs into structured BigQuery tables. This allows data teams to run ad-hoc SQL cost analytics without modifying core agent tool code or impacting runtime performance.",
-    "B": "Adding synchronous database `INSERT` statements inside every tool function introduces execution latency, tightly couples business logic to database infrastructure, and increases connection pool overhead.",
-    "C": "Local container `/tmp/` files are ephemeral and deleted when serverless containers scale down, leading to severe telemetry data loss.",
-    "D": "`temp:` state is discarded immediately at the end of the turn and does not persist or export data to an external data warehouse for SQL analytics."
+    "A": "The plugin streams agent telemetry into BigQuery without changing tool code. BigQuery supports long retention and ad hoc SQL, which is what finance needs.",
+    "B": "Cloud Trace keeps data for about 30 days and is not a SQL analytics tool, so 13-month trends are impossible.",
+    "C": "Session ID labels create very high-cardinality metrics, and Monitoring does not support ad hoc SQL analysis.",
+    "D": "It requires changing every tool and records token counts in the wrong place, because model calls happen outside tools."
    }
   },
   {
    "id": "s8q3",
    "scenario": 8,
    "number": 3,
-   "header": "Domain 4 - Diagnosing Infinite Tool Cascades",
+   "header": "Domain 4 - Diagnosing a Tool Cascade",
    "domains": [
     4
    ],
-   "context": "End users report that an AI agent occasionally hangs for 45 seconds before returning a generic polite response: *\"I encountered an issue processing your request.\"* Upon inspecting Cloud Trace, engineers observe a single user turn containing 20 identical, repeating child spans for `Search_Knowledge_Base`.",
-   "goal": "Identify the architectural root cause and apply the correct agent framework fix.",
-   "constraints": [
-    "Must prevent the agent from entering infinite tool-invocation cascades when a tool returns empty or unexpected search results.",
-    "Must enforce a hard limit on repetitive tool execution cycles at the agent level."
-   ],
-   "prompt": "Which root cause diagnosis and remedy should you select?",
+   "context": "Users sometimes wait about 45 seconds and then receive \"I encountered an issue processing your request.\" Cloud Trace shows that during those turns, a single `LlmAgent` called `search_knowledge_base` 20 times with nearly identical arguments. Each call returned an empty list. The agent is not part of any workflow agent.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "**Root Cause:** The agent entered an infinite tool cascade loop because the LLM kept re-triggering the same search tool after receiving empty outputs. **Remedy:** Configure `max_iterations` on the agent loop, update tool docstrings to handle empty result states, or implement an explicit callback/escalation handler.",
-    "B": "**Root Cause:** Cloud Trace caused a deadlock in the VPC network. **Remedy:** Disable OpenTelemetry tracing in the production environment.",
-    "C": "**Root Cause:** The user's prompt contained a prompt injection. **Remedy:** Deploy Model Armor in `Inspect only` mode.",
-    "D": "**Root Cause:** The `user:` state namespace ran out of memory. **Remedy:** Clear all user preferences in Firestore."
+    "A": "Wrap the agent in a `LoopAgent` with `max_iterations=3`, so that the agent's reasoning loop stops after three attempts and returns whatever it has found by then.",
+    "B": "Increase the timeout of the `search_knowledge_base` tool, so that slow searches can complete and return results instead of returning an empty list to the model.",
+    "C": "Set the model's temperature to 0 so that its behavior is deterministic, which prevents it from exploring many slightly different variations of the same search.",
+    "D": "Change the tool to return an explicit \"no results found\" message that suggests a next step, and cap model calls per invocation with `max_llm_calls` in `RunConfig`."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "An **infinite tool cascade** occurs when an LLM receives an unexpected or empty tool output and repeatedly attempts to call the same tool without reaching a termination condition. Cloud Trace exposes this via repeated child spans under a single parent turn span. The fix requires setting hard iteration caps (`max_iterations`), refining tool docstrings so the model understands empty output states, or raising an explicit escalation event (`EventActions(escalate=True)`).",
-    "B": "Cloud Trace is a passive telemetry collector; it does not create VPC network deadlocks or cause application-level LLM reasoning loops.",
-    "C": "Repeating search calls on empty data is a reasoning logic bug, not a prompt injection; `Inspect only` mode in Model Armor does not limit tool execution loops.",
-    "D": "Memory in state namespaces does not dictate LLM function-calling loop logic."
+    "D": "The model keeps retrying because an empty list gives it no guidance, which is a tool cascade. A clear result message breaks the pattern, and `max_llm_calls` caps any cascade that still happens.",
+    "A": "`LoopAgent` repeats its sub-agents' entire runs. It does not limit the tool calls the model makes within one run, and it could repeat the whole cascade three times.",
+    "B": "The calls returned quickly with empty results; they did not time out, so a longer timeout changes nothing.",
+    "C": "A deterministic model repeats the same unproductive choice, often with identical arguments, so the cascade continues."
    }
   },
   {
    "id": "s8q4",
    "scenario": 8,
    "number": 4,
-   "header": "Domain 4 - OpenTelemetry Auto-Instrumentation Setup",
+   "header": "Domain 4 & Domain 5 - Sensitive Data in Telemetry",
    "domains": [
-    4
+    4,
+    5
    ],
-   "context": "An engineering team is deploying an ADK agent using `agents-cli`. They want to ensure that all model calls, tool executions, and sub-agent delegates automatically generate standard OpenTelemetry (OTel) traces without manually writing `tracer.start_span()` boilerplates around every line of Python code.",
-   "goal": "Configure auto-instrumentation for the agent application.",
+   "context": "A security review finds that Cloud Trace spans from the support agent contain the full text of prompts and model responses, including customers' names, addresses and account details. Engineers still need traces that show span timing, errors, tool names and token counts to debug production issues. Only a few engineers should ever see conversation content.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which configuration approach should you implement?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Register the **`google-agents-cli-observability`** skill / OTel plugin in the agent configuration (`app/agent.py`), initializing the OpenTelemetry SDK with the Google Cloud Trace exporter.",
-    "B": "Manually wrap every Python function with custom `try...except...finally` blocks that post raw JSON metrics to a Pub/Sub topic.",
-    "C": "Import `Dialogflow CX` SDKs into the Python project and invoke `detect_intent()` inside every tool callback.",
-    "D": "Set `OTEL_SDK_DISABLED=true` in the local `.env` file."
+    "A": "Restrict the Cloud Trace User role to a small group of senior engineers, and leave the tracing configuration unchanged so that no diagnostic detail is lost.",
+    "B": "Configure the agent's tracing to stop recording prompt and response content in span attributes, while keeping timing, status, tool names and token counts.",
+    "C": "Disable tracing in production, and reproduce customer issues in staging, where the prompts come from test data that contains no personal information.",
+    "D": "Apply a Model Armor output template with Sensitive Data Protection de-identification to model responses, so that personal information is masked before it is recorded."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "ADK and `agents-cli` provide built-in observability plugins (`google-agents-cli-observability`). Initializing the OpenTelemetry SDK with the Google Cloud Trace exporter automatically hooks into ADK's execution lifecycle, generating nested spans for all model calls, tool executions, and agent delegations without writing manual `tracer.start_span()` code.",
-    "B": "Writing manual try/except blocks and Pub/Sub posting functions requires massive boilerplate code and fails to produce standardized OpenTelemetry context propagation across spans.",
-    "C": "Importing Dialogflow CX SDKs into a custom ADK Python agent adds unnecessary dependencies and does not instrument Python code with OTel traces.",
-    "D": "Setting `OTEL_SDK_DISABLED=true` completely disables OpenTelemetry tracing."
+    "B": "Content capture is a separate choice from span recording. Turning it off removes customer data from traces while keeping everything engineers need for debugging. The few people allowed to see conversation content can use a separately controlled store.",
+    "A": "The personal data is still collected and stored in traces. Limiting who can view it does not address the finding that it is stored there at all.",
+    "C": "Many production issues cannot be reproduced in staging, so engineers lose their main debugging tool.",
+    "D": "It masks model outputs only. Customers' own prompts, which contain the same details, are still recorded in full."
    }
   },
   {
    "id": "s8q5",
    "scenario": 8,
    "number": 5,
-   "header": "Domain 4 - Diagnosing Silent Tool Failures",
+   "header": "Domain 4 - Silent Tool Failures",
    "domains": [
     4
    ],
-   "context": "A banking customer complains that an account management agent told them *\"Your transfer of \\$500 was completed successfully,\"* but no funds were actually transferred. Upon inspecting Cloud Trace, engineers see that the child span for `Execute_Fund_Transfer` returned an HTTP 500 error, but the agent's final text generation ignored the error status and assured the user the task succeeded.",
-   "goal": "Detect silent failures and ensure the agent correctly handles tool execution exceptions.",
-   "constraints": [
-    "The observability trace must record backend tool exceptions using OTel span status codes (`STATUS_ERROR`) and exception event attributes.",
-    "The agent's prompt instructions and callbacks must force the agent to report failures accurately to the user rather than halluncinating success."
-   ],
-   "prompt": "Which diagnostic finding and remediation should you report?",
+   "context": "A banking agent told a customer, \"Your transfer of $500 is complete,\" but no money moved. The trace shows the `execute_transfer` span with status OK. Its code shows that the tool catches every exception from the payments API and returns the string \"Transfer submitted.\" In this case, the payments API had returned HTTP 500.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "**Finding:** The tool span caught the backend exception but swallowed the error string without raising an exception or returning a structured error dictionary to the LLM. **Remedy:** Ensure tools return structured error representations (or raise exceptions captured by `before_tool_callback` / `after_tool_callback`), set the OTel span status to `STATUS_ERROR`, and instruct the model to report errors accurately.",
-    "B": "**Finding:** Cloud Trace altered the response payload sent to the LLM. **Remedy:** Disable Cloud Trace in production.",
-    "C": "**Finding:** Model Armor blocked the HTTP 500 error string. **Remedy:** Switch Model Armor to `Inspect only` mode.",
-    "D": "**Finding:** The `temp:` state namespace stored the funds permanently. **Remedy:** Migrate `temp:` state to BigQuery."
+    "A": "Add to the agent's instruction: \"Never tell the customer a transfer is complete unless the tool explicitly confirms that the transfer succeeded,\" and add this case to the evaluation dataset.",
+    "B": "Create a Cloud Monitoring alert on HTTP 500 responses from the payments API, so that the operations team can contact affected customers soon after a failure occurs.",
+    "C": "Make the tool return a structured error with the failure reason when the payments API fails, and record the exception on the tool's span with an error status.",
+    "D": "Make the tool retry the payments API up to three times when it fails, and return \"Transfer submitted\" only after one of the attempts has succeeded."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "A **silent tool failure** occurs when a backend tool encounters an exception (like an HTTP 500 error) but swallows it, returning a generic success string to the LLM. To resolve this, tool functions must record the exception on the active OpenTelemetry span (setting status to `STATUS_ERROR`) and pass a clear error object to the LLM (or trigger callbacks) so the model accurately reports the failure to the user.",
-    "B": "Cloud Trace is a passive telemetry observer; it never alters application payloads or modifies messages sent to the LLM.",
-    "C": "Model Armor inspects user prompts and model responses for safety/injection risks; it does not block internal HTTP 500 backend API status codes.",
-    "D": "The `temp:` state namespace is in-memory scratchpad storage; it cannot execute bank transfers or store funds."
+    "C": "The tool hides the failure from both the model and the traces. Returning a structured error lets the model tell the customer the truth, and setting the span's error status makes these failures visible and possible to alert on.",
+    "A": "The tool returns \"Transfer submitted\", which reads as success, so the model follows its instruction and still reports success.",
+    "B": "It detects the problem after the customer has already been told something false, and the tool's traces still show success.",
+    "D": "Retrying a payment that is not idempotent can move money twice, and when all attempts fail, the failure still needs to be reported correctly."
    }
   },
   {
    "id": "s9q1",
    "scenario": 9,
    "number": 1,
-   "header": "Domain 5 - Principal Access Boundary Policy Architecture & Binding",
+   "header": "Domain 5 - Limiting an Agent's Blast Radius",
    "domains": [
     5
    ],
-   "context": "A corporate investment bank is deploying an autonomous financial analysis agent running under a designated Service Account / Agent Identity. The agent executes financial analysis queries against dedicated Cloud Storage buckets in `project-finance-prod`. Security policy requires that even if an attacker successfully executes a prompt injection attack on the agent, the agent physically cannot access buckets in `project-hr-prod` or `project-legal-prod`, regardless of any resource-level IAM permissions that might be granted in those projects.",
-   "goal": "Restrict the universe of resources the agent's principal identity is eligible to access.",
-   "constraints": [
-    "Must attach explicit resource boundary restrictions directly to the **principal set** rather than modifying IAM policies on every individual target resource.",
-    "The boundary evaluation must be **fail-closed** and independent of LLM system prompt instructions."
-   ],
-   "prompt": "Which security mechanism should you implement?",
+   "context": "An investment bank's financial analysis agent runs under its own identity and reads ledgers in `project-finance-prod`. The organization has hundreds of projects, and other teams regularly grant roles to service accounts. The CISO wants a guarantee that, even if the agent is manipulated through prompt injection, or someone accidentally grants it a role elsewhere, it can never access resources outside `project-finance-prod`. The solution must not require changing policies on other teams' resources.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Create a **Principal Access Boundary (PAB) policy** defining `project-finance-prod` as the allowed resource boundary, and bind the PAB policy to the agent's principal set.",
-    "B": "Configure a system prompt instruction stating: *\"Under no circumstances should you execute queries against HR or Legal buckets.\"*",
-    "C": "Attach a Model Armor template in `Inspect only` mode to the financial analysis Cloud Storage API endpoint.",
-    "D": "Deploy an Agent Gateway in Client-to-Agent (ingress) mode and set the default rule to `ALLOW_ALL`."
+    "A": "Create IAM deny policies on the HR and Legal projects that deny all permissions to the agent's principal, and add the same deny policy to new sensitive projects as they are created.",
+    "B": "Create a Principal Access Boundary policy whose only eligible resources are in `project-finance-prod`, and bind it to a principal set that contains the agent's identity.",
+    "C": "Remove every role granted to the agent outside `project-finance-prod`, and set up Cloud Asset Inventory feeds that alert the security team whenever a new role is granted to the agent elsewhere.",
+    "D": "Set the organization policy constraint that restricts allowed policy member domains, so that only principals from the bank's own domain can be granted roles on any resource."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "**Principal Access Boundary (PAB) policies** attach directly to principal sets (such as service accounts, agent identities, or workload identity pools) to define the explicit, maximum universe of Google Cloud resources those principals are eligible to access. PAB evaluation is **fail-closed** and enforced at the infrastructure level by IAM, guaranteeing that even if prompt injection occurs or resource-level IAM permissions are over-permissioned, access outside `project-finance-prod` is blocked.",
-    "B": "Prompt instructions are soft guardrails susceptible to prompt injection or model jailbreaks; they offer zero infrastructure-level perimeter security.",
-    "C": "Model Armor in `Inspect only` mode logs findings to Cloud Logging without blocking unauthorized access or restricting resource boundaries.",
-    "D": "Client-to-Agent (ingress) gateway mode governs incoming client traffic; setting `ALLOW_ALL` grants unconstrained access rather than restricting outbound resource boundaries."
+    "B": "A PAB policy is attached to principals, not to resources. It defines the complete set of resources the agent is eligible to access, so a role granted anywhere else has no effect. Evaluation fails closed.",
+    "A": "Deny policies must be attached to each resource you want to protect, which means changing other teams' projects. Any project nobody thought to include remains exposed.",
+    "C": "It detects new grants after they are made, so the agent can use a new grant before anyone reacts.",
+    "D": "The agent's identity belongs to the bank, so the constraint does not stop it from being granted roles in any project."
    }
   },
   {
    "id": "s9q2",
    "scenario": 9,
    "number": 2,
-   "header": "Domain 5 - PAB Evaluation Properties: Additive & Fail-Closed",
+   "header": "Domain 5 - PAB Evaluation",
    "domains": [
     5
    ],
-   "context": "A security architect at an investment bank is reviewing the evaluation logic of Principal Access Boundary (PAB) policies applied to an agent's service account. The service account has two separate PAB policies bound to its principal set: Policy A allows access to `projects/123456` (Finance) and Policy B allows access to `projects/789012` (Analytics).",
-   "goal": "Understand how IAM evaluates multiple PAB policies and how system errors affect access control decisions.",
+   "context": "The agent's identity has two Principal Access Boundary policies bound to it: one covers `project-finance`, and the other covers `project-analytics`. The agent has also been granted `roles/storage.objectViewer` on one bucket in each of `project-finance`, `project-analytics` and `project-marketing`.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which statement accurately describes PAB policy evaluation?",
+   "prompt": "Which buckets can the agent read?",
    "options": {
-    "A": "PAB policies are **additive** (the eligible resources represent the union of Policy A and Policy B), and evaluation is **fail-closed** (if IAM encounters an internal evaluation error, access is immediately denied).",
-    "B": "PAB policies are **subtractive** (only resources present in both Policy A and Policy B are allowed), and evaluation is **fail-open**.",
-    "C": "PAB policies evaluate sequentially until the first match, discarding subsequent policies, and default to allowing access if evaluation fails.",
-    "D": "PAB policies override resource-level Deny policies and allow access even if an explicit IAM Deny rule exists on the target resource."
+    "A": "None of the three buckets, because the two policies do not have any eligible resources in common, and their intersection is empty.",
+    "B": "Only the bucket in `project-finance`, because the first PAB policy bound to a principal takes precedence and the second policy is ignored.",
+    "C": "All three buckets, because the agent holds an allow grant on each one, and allow grants take precedence over Principal Access Boundary policies.",
+    "D": "Only the buckets in `project-finance` and `project-analytics`, because the eligible resources are the union of both policies."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "Principal Access Boundary (PAB) policy evaluation follows two core security properties:\n1. **Additive**: When multiple PAB policies are bound to a principal set, the set of eligible resources is the **union** of all resource scopes defined across those policies.\n2. **Fail-Closed**: If IAM encounters an internal service error during PAB evaluation, access is immediately blocked to prevent unauthorized data access.",
-    "B": "PAB policies are additive (union), not subtractive (intersection), and fail-closed, not fail-open.",
-    "C": "PAB policies do not evaluate sequentially to drop remaining rules; all bound PAB rules contribute to the union of eligible resources.",
-    "D": "PAB policies define eligibility boundaries; they do not override explicit IAM Deny policies or grant access on their own (a principal still needs an IAM Allow policy within the eligible boundary)."
+    "D": "PAB policies are additive: the eligible set is the union of all policies bound to the principal. Access also needs an allow grant, so the agent can read the Finance and Analytics buckets. The Marketing bucket is outside the boundary, so its grant has no effect.",
+    "A": "PAB policies combine by union, not intersection.",
+    "B": "There is no precedence order; every bound policy contributes to the eligible set.",
+    "C": "It is the other way around. An allow grant can be used only on resources inside the boundary."
    }
   },
   {
    "id": "s9q3",
    "scenario": 9,
    "number": 3,
-   "header": "Domain 5 - Conditional PAB Bindings & Principal Attributes",
+   "header": "Domain 5 - Conditional PAB Bindings",
    "domains": [
     5
    ],
-   "context": "An enterprise wants to enforce a Principal Access Boundary policy across a shared GCP folder containing finance and analytics projects. However, security policy dictates that the PAB policy must restrict resources *only* for AI agent service accounts and SPIFFE agent identities, while exempting human security administrators who manage the same GCP folder.",
-   "goal": "Configure the PAB policy binding condition to target agent principals specifically.",
-   "constraints": [
-    "Must evaluate principal attributes directly within the PAB policy binding condition.",
-    "Must NOT require creating separate GCP folders for human administrators and automated agents."
-   ],
-   "prompt": "Which condition attribute expression should you use in the PAB policy binding?",
+   "context": "The security team wants a Principal Access Boundary policy to apply to every service account and agent identity in the `analytics` folder. The same folder also contains human administrators, who must not be restricted by the policy. The organization does not want to restructure its folders. The policy is bound to the folder's principal set.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Use **`principal.type`** in the CEL condition expression to restrict policy enforcement to `iam.googleapis.com/ServiceAccount` and agent identity principal types.",
-    "B": "Use `resource.type == \"compute.googleapis.com/Instance\"` in the condition to match compute engine instances.",
-    "C": "Configure a system prompt instruction stating: *\"Human admins are exempt from this policy.\"*",
-    "D": "Enable `ALLOW_UNAUTHENTICATED` on the agent's Cloud Run service endpoint."
+    "A": "Add a condition to the policy binding that applies it only when `principal.type` is `iam.googleapis.com/ServiceAccount` or an agent identity type.",
+    "B": "Add a condition to the policy binding that checks `resource.type`, so that the boundary applies only to requests for resource types that agents use.",
+    "C": "Move the human administrators into a separate folder that has no PAB policy, and keep the PAB policy bound to the `analytics` folder's principal set.",
+    "D": "Bind the PAB policy to a Google group that contains the agents' service accounts instead of the folder's principal set, and add new agents to the group."
    },
    "answer": "A",
    "why": {
-    "A": "PAB policy bindings support Common Expression Language (CEL) conditions that evaluate principal attributes. Using **`principal.type`** allows security administrators to bind the PAB restriction specifically to automated service accounts or SPIFFE agent identities (`principal.type == 'iam.googleapis.com/ServiceAccount'`), leaving human administrator principals unaffected.",
-    "B": "Matching `resource.type` conditions on Compute Engine instances filters targeted resources, not the principal identity type initiating the request.",
-    "C": "System prompt instructions operate inside the LLM and cannot evaluate or bypass Google Cloud IAM PAB policy bindings.",
-    "D": "Enabling unauthenticated access removes identity verification entirely, creating a severe security vulnerability."
+    "A": "PAB policy bindings support conditions on principal attributes. A `principal.type` condition applies the boundary only to service accounts and agent identities in the folder, and human users are excluded.",
+    "B": "`resource.type` describes what is being accessed, not who is accessing it, so it cannot tell agents and administrators apart.",
+    "C": "It works, but it requires the restructuring the organization explicitly ruled out.",
+    "D": "PAB policies are bound to principal sets such as organizations, folders, projects and identity pools, not to arbitrary groups. Group membership would also have to be managed by hand."
    }
   },
   {
    "id": "s9q4",
    "scenario": 9,
    "number": 4,
-   "header": "Domain 5 - Combining IAM Allow Policies with PAB Boundaries",
+   "header": "Domain 5 - PAB and Allow Policies Together",
    "domains": [
     5
    ],
-   "context": "A developer creates a new service account for a financial analysis agent and attaches a PAB policy that restricts the service account's eligible resource scope strictly to `projects/finance-analytics`. The developer does not grant any standard IAM roles or Allow policies to the service account, assuming the PAB policy grants necessary read access. When the agent runs, every Cloud Storage API request returns `HTTP 403 Forbidden`.",
-   "goal": "Diagnose why the agent cannot read Cloud Storage buckets in `projects/finance-analytics` and apply the correct IAM fix.",
+   "context": "A developer created a service account for a new analysis agent and bound a Principal Access Boundary policy whose eligible resources are `projects/finance-analytics`. No other IAM changes were made. Every Cloud Storage request the agent makes to buckets in `finance-analytics` returns `403 Forbidden`. The developer believes that the PAB policy grants read access to that project.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which statement explains the issue and provides the correct resolution?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "PAB policies define resource eligibility boundaries but **do not grant access by themselves**. The developer must also grant the required IAM Allow role (e.g., `roles/storage.objectViewer`) to the service account within `projects/finance-analytics`.",
-    "B": "PAB policies automatically grant `roles/owner` on all eligible resources; the `HTTP 403` error indicates a Model Armor prompt injection block.",
-    "C": "The developer must disable VPC Service Controls on the project to allow PAB policies to take effect.",
-    "D": "The agent must be re-deployed to a local `stdio` MCP server to bypass IAM checks."
+    "A": "Wait several hours for the new PAB policy to propagate across Google Cloud, and then retry the requests before changing anything else.",
+    "B": "Edit the PAB policy to list each bucket in `finance-analytics` as an individual eligible resource, because PAB rules must name resources explicitly.",
+    "C": "Grant the service account an allow role, such as `roles/storage.objectViewer`, on the buckets or the project, because PAB policies do not grant any access.",
+    "D": "Widen the PAB policy to include the whole organization for now, so the agent can work, and narrow it again once the cause of the 403 errors is known."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "PAB policies act as an **outer guardrail / eligibility boundary**. They specify the maximum set of resources a principal *can* access, but they **do not grant any permissions on their own**. To access a resource, a principal must satisfy two independent checks: (1) the target resource must be within its PAB boundary, and (2) it must possess a standard IAM Allow policy (e.g., `roles/storage.objectViewer`).",
-    "B": "PAB policies never automatically grant `roles/owner` or any permissions; assuming PAB grants permissions is a fundamental IAM misconfiguration.",
-    "C": "VPC Service Controls and PAB policies operate orthogonally; disabling VPC-SC is unnecessary and degrades perimeter security.",
-    "D": "Moving to local `stdio` MCP servers does not grant GCP Cloud Storage IAM permissions."
+    "C": "PAB policies only limit which resources a principal is eligible to access; they never grant access. The agent needs an allow grant on resources that are also inside its boundary.",
+    "A": "Nothing is waiting to propagate. Without any allow grant, the requests will keep being denied.",
+    "B": "A project in the boundary covers the resources in it, so listing buckets individually is unnecessary and does not grant access.",
+    "D": "A wider boundary still grants nothing, so the 403 errors continue, and the agent's blast radius is widened for no benefit."
    }
   },
   {
    "id": "s9q5",
    "scenario": 9,
    "number": 5,
-   "header": "Domain 5 - Cryptographic SPIFFE Identity Attestation & DPoP",
+   "header": "Domain 5 - Token Replay Protection",
    "domains": [
     5
    ],
-   "context": "An investment bank deploys its financial analysis agent on Agent Runtime. The agent uses SPIFFE-based Agent Identity to authenticate across Agent Gateway when calling external financial data APIs.",
-   "goal": "Ensure that intercepted OAuth 2.0 or bearer tokens cannot be replayed by malicious third parties outside the trusted runtime container.",
-   "constraints": [
-    "Must enforce cryptographic proof-of-possession binding on tokens passing through Agent Gateway.",
-    "Must leverage Google Cloud's native Agent Identity attestation mechanisms."
-   ],
-   "prompt": "Which cryptographic mechanism is enforced by Agent Identity across Agent Gateway?",
+   "context": "The bank's agent runs on Agent Runtime and calls an external market-data API through Agent Gateway. In a penetration test, testers copied an access token from a verbose debug log and replayed it from a laptop to obtain market data. The CISO wants a stolen token to be useless outside the agent's runtime.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "**Demonstrating Proof of Possession (DPoP)** and mTLS certificate binding, which cryptographically binds tokens to the agent container's private key, rendering stolen tokens unusable on other hosts.",
-    "B": "Static API keys hardcoded in system instructions and refreshed every 30 days.",
-    "C": "Plaintext HTTP Basic Authentication headers passed over unencrypted HTTP connections.",
-    "D": "Storing raw private keys in local `/tmp/` container text files."
+    "A": "Shorten the lifetime of the access tokens issued to the agent to five minutes, so that any token copied from logs expires before an attacker can use it.",
+    "B": "Use the agent's Agent Identity through Agent Gateway so that its tokens are bound with DPoP and mTLS to a key held only by the agent's runtime.",
+    "C": "Store the market-data API's client secret in Secret Manager, and have the agent fetch it at runtime instead of reading it from an environment variable.",
+    "D": "Place the agent's project in a VPC Service Controls perimeter, so that access tokens issued inside the perimeter cannot be used from outside it."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "Agent Identity uses short-lived X.509 certificates and enforces **Demonstrating Proof of Possession (DPoP)** alongside mTLS across Agent Gateway. DPoP cryptographically binds issued access tokens to the specific private key held by the agent container instance. If an attacker intercepts a token, they cannot replay it from another host or container because they lack the underlying private key signature.",
-    "B": "Hardcoded static API keys in system prompts violate credential management guidelines and lack cryptographic token binding.",
-    "C": "Plaintext HTTP Basic Authentication over unencrypted connections exposes credentials to network sniffing and token theft.",
-    "D": "Storing unencrypted private keys in `/tmp/` files exposes credentials to local file inclusion vulnerabilities and container compromise."
+    "B": "With DPoP and mTLS binding, each request must prove possession of a private key held only by the agent's runtime. A copied token without that key is rejected.",
+    "A": "It shrinks the window for replay but does not close it; a token can still be replayed within five minutes.",
+    "C": "It protects the stored secret, but the token issued from it can still be copied and replayed.",
+    "D": "VPC Service Controls protects Google Cloud APIs. It has no control over how an external market-data API accepts tokens."
    }
   },
   {
    "id": "s10q1",
    "scenario": 10,
    "number": 1,
-   "header": "Domain 5 - Agent Gateway Ingress vs. Egress Modes",
+   "header": "Domain 5 - Securing Client Access to Agents",
    "domains": [
     5
    ],
-   "context": "A telecommunications enterprise operates multiple AI agent applications deployed across Google Cloud. The architecture team needs to establish a centralized proxy layer that (1) authenticates incoming client traffic from IDEs and web apps before reaching the agents, and (2) intercepts all outbound API calls made by agents to third-party SaaS services to validate them against an enterprise catalog using a default-deny rule.",
-   "goal": "Configure Agent Gateway to manage both incoming and outgoing traffic streams.",
+   "context": "A telecommunications company's developers use Claude Code and Cursor to connect directly to about 15 internal agents, each of which exposes its own endpoint. Security wants every client connection to be authenticated with the company's identity-aware access controls, prompts to be screened for injection attempts before they reach any agent, and per-client rate limits applied. The agent teams do not want to change their agents' code.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which configuration mode combination should you deploy on Agent Gateway?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Deploy Agent Gateway in **dual mode**: using **Client-to-Agent (Ingress) mode** to frontend incoming client connections and **Agent-to-Anywhere (Egress) mode** to intercept outbound tool and API traffic.",
-    "B": "Deploy Agent Gateway strictly in `stdio` mode and disable IAM authentication on Cloud Run.",
-    "C": "Configure a Cloud NAT gateway for ingress and deploy a Model Armor template in `Inspect only` mode for egress.",
-    "D": "Deploy a gRPC proxy on Compute Engine and disable mTLS Context-Aware Access."
+    "A": "Place the agents behind Agent Gateway in Agent-to-Anywhere mode, register the agents in Agent Registry, and attach a Model Armor template for prompt screening.",
+    "B": "Place the agents behind an external Application Load Balancer with Identity-Aware Proxy enabled, and use Cloud Armor rate-limiting rules for each client.",
+    "C": "Place the agents behind Agent Gateway in Client-to-Agent mode, with Identity-Aware Proxy authentication, a Model Armor template for prompt screening, and rate limits.",
+    "D": "Give each agent team a shared authentication and rate-limiting library, and call Model Armor's sanitize API from each agent before its model is invoked."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "**Agent Gateway** operates in two distinct functional modes:\n1. **Client-to-Agent (Ingress) mode**: Sits in front of agent runtimes to authenticate incoming client traffic, enforce IAP, and apply rate limits.\n2. **Agent-to-Anywhere (Egress) mode**: Intercepts outbound calls from agents to external web APIs or remote MCP servers, validating destinations against **Agent Registry** using a default-deny posture.",
-    "B": "`stdio` is a local machine subprocess transport mechanism; it cannot act as a network gateway proxy, and disabling IAM authentication violates security baselines.",
-    "C": "Cloud NAT handles outbound IP translation but cannot parse A2A protocol payloads, evaluate Agent Registry allowlists, or authenticate incoming client connections.",
-    "D": "Unmanaged gRPC proxies add operational overhead and lack native Agent Registry and mTLS Context-Aware Access integration."
+    "C": "In Client-to-Agent mode, Agent Gateway sits in front of the agents and applies Identity-Aware Proxy authentication, Model Armor prompt screening and rate limits centrally, without changes to agent code.",
+    "A": "Agent-to-Anywhere mode governs the agents' outbound traffic; the requirement is about incoming client traffic.",
+    "B": "It covers authentication and rate limits, but it has no Model Armor prompt screening and does not understand agent protocols.",
+    "D": "It requires changing every agent's code, which the teams ruled out, and consistency depends on each team adopting the library correctly."
    }
   },
   {
    "id": "s10q2",
    "scenario": 10,
    "number": 2,
-   "header": "Domain 5 - Model Armor Prompt Injection Constraints",
+   "header": "Domain 5 - Model Armor Prompt Injection Limits",
    "domains": [
     5
    ],
-   "context": "Security testers evaluate an agent's Model Armor template configured for prompt injection detection. During testing, a user submits a single-word prompt: `\"Ignore\"`. The tester notices that Model Armor passes the single-word prompt through to the LLM without triggering a prompt injection evaluation warning.",
-   "goal": "Understand Model Armor's input evaluation constraints and ensure prompt injection policies function as expected.",
+   "context": "A red team tests the billing agent, which is protected by a Model Armor input template with prompt injection and jailbreak detection in `Inspect and block` mode. Longer injection attempts are blocked. However, very short inputs such as \"Ignore rules\" or \"Override\" pass through without any prompt injection finding in the logs, and in a few cases they changed the agent's behavior.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which statement explains why the evaluation was skipped?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Model Armor's prompt injection detection engine requires input payloads to contain **at least 3 words** to trigger evaluation; shorter inputs do not meet the minimum token threshold.",
-    "B": "Single-word inputs automatically bypass Model Armor and disable Sensitive Data Protection (SDP) rules.",
-    "C": "Model Armor only evaluates model output responses, never incoming user prompts.",
-    "D": "Model Armor requires system prompts to be stored in the `user:` state namespace in ADK."
+    "A": "Lower the prompt injection confidence threshold in the template from `HIGH` to `LOW_AND_ABOVE`, so that weaker injection signals in short inputs are also flagged.",
+    "B": "Treat inputs under three words as unscreened, and add controls that do not depend on detection, such as tool authorization and confirmation of risky actions.",
+    "C": "Change the template's enforcement type to `Inspect only` during the investigation, so that every input, including short ones, is written to Cloud Logging with its findings.",
+    "D": "Configure Model Armor floor settings at the organization level, so that the prompt injection filter is enforced on every input regardless of the template's configuration."
    },
-   "answer": "A",
+   "answer": "B",
    "why": {
-    "A": "In Google Cloud Model Armor, the prompt injection and jailbreak detection engine requires input text payloads to contain **at least 3 words**. Inputs shorter than 3 words do not contain sufficient semantic context for the prompt injection classifier and are passed through without triggering injection evaluation.",
-    "B": "Short inputs do not disable SDP rules; SDP inspection (for PII/SSNs) still evaluates short strings.",
-    "C": "Model Armor evaluates both incoming user prompts (input templates) and generated model outputs (output templates).",
-    "D": "Model Armor templates are configured at the platform/gateway layer, completely independent of ADK state namespaces."
+    "B": "Model Armor's prompt injection detection runs only on inputs of at least three words, so these inputs are never evaluated. The risk has to be reduced by other layers, such as limiting what tools can do and requiring confirmation for high-risk actions.",
+    "A": "Thresholds apply to inputs that are evaluated. Short inputs are skipped entirely, so no threshold catches them.",
+    "C": "`Inspect only` stops blocking the longer attacks that are currently being caught, and it still produces no finding for short inputs.",
+    "D": "Floor settings enforce a minimum configuration on templates. They do not change the three-word minimum for evaluation."
    }
   },
   {
    "id": "s10q3",
    "scenario": 10,
    "number": 3,
-   "header": "Domain 5 - Decoupling Model Armor Input vs. Output Templates",
+   "header": "Domain 5 - Separate Input and Output Templates",
    "domains": [
     5
    ],
-   "context": "A telecommunications firm deploys Model Armor to secure an agent handling billing inquiries. Security policies mandate that (1) user input prompts must be inspected inline for adversarial jailbreak attacks, and (2) generated model outputs must undergo Sensitive Data Protection (SDP) masking to redact account numbers and PII before leaving the platform perimeter.",
-   "goal": "Implement Model Armor templates following Google-recommended best practices.",
+   "context": "The billing agent uses a single Model Armor template, applied to both prompts and responses, with prompt injection, responsible AI and Sensitive Data Protection filters. Two problems have been reported. Customers who type their own account number to ask about their bill have it masked, so the agent cannot help them. Meanwhile, the real concern of the compliance team is responses that could expose other customers' account numbers.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which design pattern should you recommend?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Create **decoupled Model Armor templates**: an **Input Template** optimized for prompt injection detection applied to incoming user requests, and an **Output Template** configured with SDP de-identification rules applied to model responses.",
-    "B": "Create a single monolithic template, attach it only to the user prompt, and disable output inspection to reduce latency.",
-    "C": "Hardcode PII regex masking logic directly inside prompt system instructions.",
-    "D": "Deploy Model Armor in `Inspect only` mode on the client's web browser."
+    "A": "Remove the Sensitive Data Protection filter from the template, and rely on IAM controls in the billing database to stop the agent from retrieving other customers' records.",
+    "B": "Keep the single template on both prompts and responses, and change its enforcement type to `Inspect only` so that account numbers are logged rather than masked or blocked.",
+    "C": "Keep the single template on both prompts and responses, and exclude the account-number infoType from its Sensitive Data Protection configuration so that it is no longer masked.",
+    "D": "Create an input template for prompt injection and jailbreak detection, and a separate output template that masks account numbers with Sensitive Data Protection and applies responsible AI filters."
    },
-   "answer": "A",
+   "answer": "D",
    "why": {
-    "A": "Google Cloud best practices dictate **decoupling input and output Model Armor templates**. Input templates focus on threat vectors unique to prompts (prompt injection, jailbreak, malicious URLs), while output templates focus on risks unique to generated responses (PII data leakage via SDP redaction, brand safety, hate speech).",
-    "B": "Inspecting only user prompts misses data leakage risks where the LLM or backend tools inadvertently output raw PII in the final response.",
-    "C": "Prompt system instructions are non-deterministic and easily bypassed via prompt injection or jailbreak techniques.",
-    "D": "Model Armor is a server-side/gateway security service, not a client-side browser extension."
+    "D": "Prompts and responses carry different risks. Separate templates let the input template focus on attacks, so customers can share their own account numbers, while the output template masks account numbers before responses leave the platform.",
+    "A": "IAM helps, but the compliance team's concern is what appears in responses, so removing output masking removes a required control.",
+    "B": "Nothing is masked in either direction, so account numbers in responses reach customers.",
+    "C": "Account numbers are then unmasked in responses as well, which is exactly the risk compliance cares about."
    }
   },
   {
    "id": "s10q4",
    "scenario": 10,
    "number": 4,
-   "header": "Domain 5 - VPC Service Controls & Agent Private Connectivity",
+   "header": "Domain 5 - Data Perimeter and Private Egress",
    "domains": [
     5
    ],
-   "context": "An agent running on Google Cloud processes proprietary customer network logs stored in BigQuery and Cloud Storage. Security regulations require establishing a data perimeter that prevents the agent from exfiltrating data to external untrusted endpoints or unauthorized GCP projects.",
-   "goal": "Secure the agent's data perimeter and private network egress.",
-   "constraints": [
-    "Must prevent data exfiltration to unauthorized external storage or projects.",
-    "Outbound HTTP(S) traffic from the agent to approved external web APIs must pass through an explicit, inspecting web proxy within the customer VPC."
-   ],
-   "prompt": "Which architecture should you deploy?",
+   "context": "An agent on Agent Runtime analyzes customer network logs stored in BigQuery and Cloud Storage. Regulators require that this data cannot be copied to projects outside the company's control, even by a compromised agent that holds valid credentials. The agent also calls three approved external SaaS APIs, and that outbound traffic must pass through an inspecting proxy in the company's VPC that allows only approved URLs.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
    "options": {
-    "A": "Enclose the agent runtime, BigQuery, and Cloud Storage resources inside a **VPC Service Controls (VPC-SC) service perimeter**, configure **Private Service Connect (PSC) interfaces** (or Direct VPC Egress) for agent network connectivity, and route outbound web traffic through a **Secure Web Proxy**.",
-    "B": "Assign public IP addresses to all BigQuery tables and grant `roles/owner` to `allUsers`.",
-    "C": "Disable mTLS and route all agent egress traffic through Cloud NAT without VPC-SC perimeters.",
-    "D": "Store all customer network logs in the `app:` state namespace in ADK."
+    "A": "Put the agent, BigQuery and Cloud Storage projects in a VPC Service Controls perimeter, connect Agent Runtime to the VPC with a Private Service Connect interface, and send outbound web traffic through Secure Web Proxy with a URL allowlist.",
+    "B": "Put the agent, BigQuery and Cloud Storage projects in a VPC Service Controls perimeter, connect Agent Runtime to the VPC with a Private Service Connect interface, and send outbound web traffic through Cloud NAT with a reserved static IP address that the SaaS providers allowlist.",
+    "C": "Put the agent, BigQuery and Cloud Storage projects in a VPC Service Controls perimeter, connect Agent Runtime to the VPC with Direct VPC egress, and send outbound web traffic through Secure Web Proxy with a URL allowlist.",
+    "D": "Connect Agent Runtime to the VPC with a Private Service Connect interface, send outbound web traffic through Secure Web Proxy with a URL allowlist, and rely on IAM to keep data inside the company's projects."
    },
    "answer": "A",
    "why": {
-    "A": "**VPC Service Controls (VPC-SC)** creates an perimeter around GCP services (BigQuery, Cloud Storage, Agent Runtime) to block unauthorized data exfiltration. Connecting agent runtimes to the customer VPC via **PSC interfaces** (for Agent Runtime) or **Direct VPC Egress** (for Cloud Run) ensures private traffic flow, while a **Secure Web Proxy** provides URL-level filtering and inspection for approved outbound web traffic.",
-    "B": "Assigning public IPs and granting `roles/owner` to `allUsers` completely exposes sensitive enterprise data to the public internet.",
-    "C": "Cloud NAT handles IP translation but does not provide data perimeter exfiltration defense or web proxy filtering.",
-    "D": "State namespaces are in-memory application variables; they cannot replace data perimeters or infrastructure network controls."
+    "A": "The VPC Service Controls perimeter stops data from being copied to projects outside it, even with valid credentials. A Private Service Connect interface is how Agent Runtime connects to a customer VPC, and Secure Web Proxy inspects outbound traffic and allows only approved URLs.",
+    "B": "Cloud NAT only translates addresses; it does not inspect traffic or filter URLs.",
+    "C": "Direct VPC egress is a Cloud Run feature. Agent Runtime connects to a VPC through a Private Service Connect interface.",
+    "D": "IAM does not stop a principal with valid credentials from writing data to a project outside the company, which is exactly what the perimeter prevents."
    }
   },
   {
    "id": "s10q5",
    "scenario": 10,
    "number": 5,
-   "header": "Domain 5 - Agent Gateway Default Deny & Platform API Allowlisting",
+   "header": "Domain 5 - Troubleshooting Agent Gateway Egress",
    "domains": [
     5
    ],
-   "context": "After deploying Agent Gateway in Agent-to-Anywhere (egress) mode, developers report that the agent fails during startup, returning `HTTP 498` error codes when attempting to call Vertex AI models or write audit logs.",
-   "goal": "Diagnose the root cause of the startup failure and restore normal agent operation.",
+   "context": "After the security team routed an agent's outbound traffic through Agent Gateway in Agent-to-Anywhere mode, the agent fails during startup. Its calls to the model endpoint and to Cloud Logging return HTTP 498. The agent's identity still has `roles/aiplatform.user`, and nothing about the agent's code or network changed.",
+   "goal": "",
    "constraints": [],
-   "prompt": "Which statement explains the failure and provides the correct resolution?",
+   "prompt": "What should you do?",
    "options": {
-    "A": "Agent Gateway enforces a **strict default-deny posture** for all outbound egress traffic. Essential platform endpoints (such as `aiplatform.googleapis.com`, `logging.googleapis.com`, and `secretmanager.googleapis.com`) must be explicitly **allowlisted in Agent Registry**.",
-    "B": "The `HTTP 498` error indicates that the agent's Python virtual environment corrupted the `uv.lock` file. Developers must delete the `/workspace/` directory.",
-    "C": "Agent Gateway requires all LLM prompts to be translated into base64 before making API calls.",
-    "D": "Model Armor in `Inspect and block` mode automatically blocks all Google Cloud APIs unless `min_instances` is set to `100`."
+    "A": "Grant the agent's identity `roles/aiplatform.user` again at the project level, because moving traffic behind Agent Gateway requires the role to be granted again.",
+    "B": "Enable Private Google Access on the subnet used by the agent's Private Service Connect interface, so that calls to Google APIs can be routed to Google's endpoints.",
+    "C": "Register the essential Google Cloud endpoints, such as `aiplatform.googleapis.com` and `logging.googleapis.com`, in Agent Registry so Agent Gateway allows traffic to them.",
+    "D": "Attach a Model Armor template to the gateway, because Agent Gateway rejects outbound requests until a content inspection policy has been configured for them."
    },
-   "answer": "A",
+   "answer": "C",
    "why": {
-    "A": "Agent Gateway operates under a strict **default-deny security model**. When egress interception is active, outbound calls to Google Cloud platform services required for basic agent operation (such as Vertex AI `aiplatform.googleapis.com`, Cloud Logging `logging.googleapis.com`, or Secret Manager `secretmanager.googleapis.com`) are blocked unless they are explicitly cataloged and allowlisted in **Agent Registry**.",
-    "B": "HTTP 498 is an Agent Gateway traffic rejection status code, not a local Python `uv.lock` environment corruption error.",
-    "C": "Agent Gateway parses standard JSON-RPC/REST/gRPC protocols; it does not require prompt strings to be base64-encoded.",
-    "D": "Model Armor filters prompt content risks; it does not block platform API endpoints based on container `min_instances` settings."
+    "C": "Agent Gateway's egress mode denies everything by default. Destinations must be registered in Agent Registry, including the Google Cloud APIs the agent needs to start. HTTP 498 is the gateway rejecting calls to endpoints that are not registered.",
+    "A": "An IAM permission problem would return 403, and the role is already granted.",
+    "B": "Nothing about the network changed, and a routing problem would cause timeouts or connection errors rather than a 498 response from the gateway.",
+    "D": "Model Armor is an optional inspection step in the gateway's enforcement chain; it is not required before traffic is allowed."
    }
   }
  ]

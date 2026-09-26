@@ -352,7 +352,8 @@
    */
   function questionHTML(q, order, opts) {
     const { selected, revealed, disabled } = opts;
-    let h = `<div class="q-block"><span class="q-label">Context:</span> ${inline(q.context)}</div>`;
+    const labelled = q.goal || q.constraints.length;
+    let h = `<div class="q-block">${labelled ? '<span class="q-label">Context:</span> ' : ''}${inline(q.context)}</div>`;
     if (q.goal) h += `<div class="q-block"><span class="q-label">Goal:</span> ${inline(q.goal)}</div>`;
     if (q.constraints.length) {
       h += `<div class="q-block"><span class="q-label">Constraints:</span></div><ul class="q-constraints">${q.constraints.map((c) => `<li>${inline(c)}</li>`).join('')}</ul>`;
