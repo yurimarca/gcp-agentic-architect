@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "agy-sandbox-4a603"
+  },
+  "targets": {
+    "agy-sandbox-4a603": {
+      "hosting": {
+        "mock-exam": [
+          "agy-mock-exam"
+        ]
+      }
+    }
+  }
+}

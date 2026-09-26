@@ -5,12 +5,49 @@
 
 window.Voyager = window.Voyager || {};
 
+/**
+ * App Check (reCAPTCHA Enterprise) site key.
+ * This key is public by design (it is embedded in every page), so it is safe to commit.
+ * Leave empty to disable App Check (e.g. before the key has been created).
+ */
+const RECAPTCHA_ENTERPRISE_SITE_KEY = '';
+
 (function() {
   let db = null;
   let auth = null;
   let currentUser = null;
   let currentScoreToSubmit = null;
   let hasSubmittedScore = false;
+  let appCheckActivated = false;
+
+  /**
+   * Activates Firebase App Check so Firestore only accepts requests from this site.
+   * Must run before the first Firestore/Auth call. Safe to call multiple times.
+   */
+  function activateAppCheck() {
+    if (appCheckActivated || typeof firebase === 'undefined' || !firebase.appCheck) return;
+    appCheckActivated = true;
+
+    if (!RECAPTCHA_ENTERPRISE_SITE_KEY) {
+      console.warn("App Check disabled: RECAPTCHA_ENTERPRISE_SITE_KEY is not set in leaderboard.js");
+      return;
+    }
+
+    // On localhost (emulators), use a debug token instead of reCAPTCHA.
+    // The SDK prints the token to the console; register it in Firebase console > App Check > Manage debug tokens.
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+
+    try {
+      firebase.appCheck().activate(
+        new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
+        true // auto-refresh tokens
+      );
+    } catch (err) {
+      console.error("Error activating App Check:", err);
+    }
+  }
 
   /**
    * Initializes Firebase Firestore & Anonymous Auth using Firebase Hosting reserved app instance.
@@ -18,6 +55,7 @@ window.Voyager = window.Voyager || {};
   function initFirebase() {
     try {
       if (typeof firebase !== 'undefined' && firebase.app) {
+        activateAppCheck();
         const app = firebase.app();
         db = app.firestore();
         auth = app.auth();
@@ -42,6 +80,7 @@ window.Voyager = window.Voyager || {};
 
   function getFirestore() {
     if (!db && typeof firebase !== 'undefined' && firebase.app) {
+      activateAppCheck();
       db = firebase.app().firestore();
     }
     return db;
@@ -49,6 +88,7 @@ window.Voyager = window.Voyager || {};
 
   function getAuth() {
     if (!auth && typeof firebase !== 'undefined' && firebase.app) {
+      activateAppCheck();
       auth = firebase.app().auth();
     }
     return auth;
@@ -259,24 +299,13 @@ window.Voyager = window.Voyager || {};
     }
   }
 
-  // Bind DOM elements on load
+  // Bind DOM elements on load.
+  // Note: #btn-win-continue is owned by game.js, which hands off via window.Voyager.showLeaderboard(score).
   function bindUI() {
     const restartBtn = document.getElementById('btn-restart-game');
     if (restartBtn) {
       restartBtn.addEventListener('click', () => {
         triggerGameRestart();
-      });
-    }
-
-    const winContinueBtn = document.getElementById('btn-win-continue');
-    if (winContinueBtn) {
-      winContinueBtn.addEventListener('click', () => {
-        const scoreValEl = document.getElementById('final-score-val');
-        let finalScore = 0;
-        if (scoreValEl) {
-          finalScore = parseInt(scoreValEl.textContent || '0', 10) || 0;
-        }
-        window.Voyager.showLeaderboard(finalScore);
       });
     }
   }

@@ -54,6 +54,7 @@ This repository is a **tutorial project**. The game is the end product, but the 
 | Hosting          | Firebase Hosting                                   | Static hosting on a global CDN, plus reserved SDK URLs           |
 | Database         | Cloud Firestore                                    | Serverless document DB for the leaderboard                       |
 | Identity         | Firebase Anonymous Authentication                  | Every player gets a `uid` without a login screen                 |
+| Abuse protection | Firebase App Check + reCAPTCHA Enterprise          | Firestore only accepts requests from the real site               |
 | Firebase SDK     | v12.8.0 **compat** build, loaded from reserved URLs | Global `firebase` namespace works with plain `<script>` tags   |
 | Dev tooling      | Firebase CLI, Firebase Emulator Suite              | Local testing and one-command deploy                             |
 | AI tooling       | Google Antigravity, Gemini models, Chrome DevTools MCP | Agents wrote, tested and deployed the code                  |
@@ -259,6 +260,7 @@ Each state maps to one overlay `<div>` in `index.html`: `#start-screen`, `#fail-
 <script defer src="/__/firebase/12.8.0/firebase-app-compat.js"></script>
 <script defer src="/__/firebase/12.8.0/firebase-auth-compat.js"></script>
 <script defer src="/__/firebase/12.8.0/firebase-firestore-compat.js"></script>
+<script defer src="/__/firebase/12.8.0/firebase-app-check-compat.js"></script>
 <script defer src="/__/firebase/init.js"></script>
 ```
 
@@ -279,7 +281,7 @@ The SDK scripts are `defer`, but `game.js` and `leaderboard.js` are not. `leader
 2. The overlay renders a **NEW HIGH SCORE!** box with a 3-character initials input (`autofocus`).
 3. On submit, the initials are sanitized to exactly `[A-Z]{3}`: uppercased, non-letters stripped, truncated to 3, and padded with `A` if short.
 4. The code writes a document `{ name, score, timestamp: serverTimestamp(), uid }` to `scores`.
-5. The code queries `scores` ordered by `score desc`, `limit(10)`, and renders it as a table. Ranks 1, 2 and 3 are styled gold, silver and bronze.
+5. The code queries `scores` ordered by `score desc`, `limit(10)` (10 document reads), and renders it as a table. This happens once when the overlay opens and once more after a submit. Ranks 1, 2 and 3 are styled gold, silver and bronze.
 6. Names from Firestore go through `escapeHtml()` before they are inserted into the DOM, which prevents XSS from crafted documents.
 7. **PLAY AGAIN** or **Enter** (when the input is not focused) calls `Voyager.resetGame()`.
 
@@ -406,7 +408,38 @@ match /scores/{scoreId} {
 
 - **Only `create` is allowed.** Without `update` or `delete` rules, nobody can edit or remove a score from the client. Deletion is an admin task done in the console.
 - This rule is **stricter than the course's suggestion.** The course's *"Return to Earth"* section recommends `allow read: if true; allow write: if request.auth != null;`. That closes test mode, but it lets any signed-in user write any shape of document, and also update or delete other players' scores. The rule in this repo validates the full schema instead.
-- **What it does *not* prevent:** a player can still open DevTools and submit an inflated `score`. The client is the source of truth for the score. Real anti-cheat would need server-side validation, for example a Cloud Function that verifies a game session.
+- **What it does *not* prevent:** a player can still open DevTools and submit an inflated `score`. The client is the source of truth for the score. Real anti-cheat would need server-side validation, for example a Cloud Function that verifies a game session. [App Check](#firebase-app-check-recaptcha-enterprise) blocks scripts that call Firestore directly from *outside* the site, but not someone cheating from inside the real page.
+
+### Firebase App Check (reCAPTCHA Enterprise)
+
+Security rules check *who* is writing and *what* they write. App Check checks *where the request comes from*. After App Check is enforced, Firestore rejects any request that doesn't carry a valid App Check token. Only pages served from your registered domains can get one. This protects your free quota (or your bill, on Blaze) from scripts that call your Firestore API directly.
+
+**How it works in this project**
+
+- `index.html` loads `/__/firebase/12.8.0/firebase-app-check-compat.js`.
+- `leaderboard.js` calls `activateAppCheck()` before the first Firestore or Auth call:
+  ```js
+  firebase.appCheck().activate(
+    new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
+    true // auto-refresh tokens
+  );
+  ```
+- The site key is the `RECAPTCHA_ENTERPRISE_SITE_KEY` constant at the top of `leaderboard.js`. It is **public by design** (every browser receives it), so committing it is fine. If it is empty, App Check is skipped and a warning is logged, so the game still works before setup.
+- On `localhost` or `127.0.0.1`, the code sets `FIREBASE_APPCHECK_DEBUG_TOKEN = true`. The SDK then uses a **debug token** instead of reCAPTCHA, because reCAPTCHA won't attest a local dev server.
+
+**One-time setup**
+
+1. **Create a reCAPTCHA Enterprise key.** Go to Google Cloud console → *Security → reCAPTCHA* (select your Firebase project) → *Create key*.
+   - Platform: **Web**
+   - Domains: `<project-id>.web.app`, `<project-id>.firebaseapp.com` (plus any custom domain)
+   - Leave the **checkbox challenge off**. App Check uses score-based (invisible) keys.
+   - The console may ask you to enable the *reCAPTCHA Enterprise API*. Accept.
+2. **Register the app with App Check.** Go to Firebase console → *Security → App Check → Apps* → your web app → **reCAPTCHA Enterprise** → paste the site key → *Save*.
+3. **Put the key in code.** Set `RECAPTCHA_ENTERPRISE_SITE_KEY` in `public/leaderboard.js`, then run `firebase deploy --only hosting`.
+4. **Monitor first, then enforce.** On the App Check → *APIs* tab, open **Cloud Firestore** and watch the request metrics for a day or so. When nearly all requests are *verified*, click **Enforce**. Enforcing too early blocks real players who are still running an old cached copy of the page.
+5. *(Optional)* **Local debug token.** Run the emulators and open the game on localhost. Then copy the token the SDK prints in the browser console (`App Check debug token: ...`). Add it under App Check → *Apps* → ⋮ → **Manage debug tokens**. The Firestore **emulator** ignores App Check, so you only need this if you also enforce App Check on a production service that you call from localhost, such as Auth.
+
+**Cost:** App Check itself is free. reCAPTCHA Enterprise includes a free monthly tier of assessments. Check [current pricing](https://cloud.google.com/recaptcha/docs/compare-tiers). App Check tokens are cached and refreshed about once an hour, so each player session uses roughly one assessment, not one per Firestore request.
 
 ### Other collections in `firestore.rules`
 
@@ -613,6 +646,9 @@ firebase firestore:delete scores --recursive   # deletes ALL scores. Be careful!
 | Firestore emulator won't start | Java not installed or too old | Install JDK 11+ |
 | Port already in use (5000/8080/4000) | Another process (on macOS, AirPlay uses 5000) | Change the ports in `firebase.json → emulators` |
 | `firebase deploy` targets the wrong project | `.firebaserc` default alias | `firebase use <project-id>` or edit `.firebaserc` |
+| Console: `App Check disabled: RECAPTCHA_ENTERPRISE_SITE_KEY is not set` | Site key not configured yet | Follow the App Check setup in §10. The game works without it |
+| Firestore `permission-denied` or `appCheck/...` errors **after enforcing App Check** | Domain missing from the reCAPTCHA key, or players on an old cached page | Add the domain to the key. Un-enforce, wait, and check metrics before enforcing again |
+| `appCheck/throttled` or debug-token errors on localhost | Debug token not registered | Register the token printed in the console (App Check → Manage debug tokens) |
 | Fonts look like plain monospace | Google Fonts blocked or offline | Allow `fonts.googleapis.com`. The game still works |
 | Ship feels too fast | High-refresh-rate display (movement is per frame) | See §16. Scale movement by `dt` |
 
@@ -624,7 +660,7 @@ This is agent-generated code that passed end-to-end validation. It also has roug
 
 **Quirks in the current code**
 
-- **Duplicate button handlers.** `game.js` and `leaderboard.js` both attach click handlers to `#btn-win-continue` and `#btn-restart-game`. In practice, `showLeaderboard` and the restart each run twice per click. It is harmless today (the second call re-renders or restarts the same thing), but it is a classic symptom of two agents implementing the same hand-off. One owner per handler would be cleaner.
+- **~~Duplicate button handlers~~ (fixed).** The agents originally attached click handlers to `#btn-win-continue` and `#btn-restart-game` in *both* `game.js` and `leaderboard.js`. Every click ran `showLeaderboard` twice, costing 10 extra Firestore reads, and restarted the game twice. It is a classic symptom of two agents implementing the same hand-off. Each button now has a single owner: `game.js` owns *View Leaderboard*, and `leaderboard.js` owns *Play Again*. Both still go through the `window.Voyager` bridge.
 - **Enter doesn't start the game.** The course's design says "players press Enter to start". The start and fail screens only respond to button clicks. Enter only works on the leaderboard.
 - **Frame-rate-dependent movement.** `baseSpeed` is in px/frame. Multiplying by `dt × 60` would make speed consistent across displays.
 - **"NEW HIGH SCORE!" always shows** after a win, even if the score would not make the top 10.

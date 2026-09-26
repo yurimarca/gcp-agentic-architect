@@ -633,7 +633,6 @@
     const btnStart = document.getElementById('btn-start');
     const btnRetry = document.getElementById('btn-retry');
     const btnWinContinue = document.getElementById('btn-win-continue');
-    const btnRestartGame = document.getElementById('btn-restart-game');
 
     if (btnStart) {
       btnStart.addEventListener('click', () => {
@@ -658,11 +657,7 @@
       });
     }
 
-    if (btnRestartGame) {
-      btnRestartGame.addEventListener('click', () => {
-        setState(window.Voyager.STATE.PLAYING);
-      });
-    }
+    // #btn-restart-game is owned by leaderboard.js, which restarts via window.Voyager.resetGame()
 
     // Initial state setup
     setState(window.Voyager.STATE.START);
