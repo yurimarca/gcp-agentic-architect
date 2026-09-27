@@ -1,143 +1,111 @@
-Here are **5 realistic, scenario-based multiple-choice exam questions** built directly on **Scenario 7 (Serverless Deployment & Zero-Downtime Canary Rollout)**, focusing on deployment targets, traffic splitting, automated rollback triggers, cold-start mitigation, and session compatibility.
+Five scenario-based questions for **Scenario 7 (Serverless Deployment & Zero-Downtime Canary Rollout)**.
 
 ---
 
-### **Question 1 (Domain 4 - Selecting Deployment Targets)**
+### **Question 1 (Domain 4 - Selecting a Deployment Target)**
 
-**Context:** An insurance startup is ready to deploy its new Python ADK claims-processing agent to production. The engineering team wants a deployment target that handles serverless container management, integrates natively with Python ADK, and eliminates cluster or node management overhead.
+The insurance startup is deploying a new fraud-triage agent built with Python ADK. The team is three Python developers with no container or Kubernetes experience. They want managed sessions and memory with as little operational work as possible. A separate team already runs several Node.js services on Cloud Run and has offered to host the agent there.
 
-**Goal:** Select the optimal Google Cloud deployment target.
+**Where should you deploy the fraud-triage agent?**
 
-**Constraints:**
-* Must be a **fully managed, serverless** platform natively optimized for Python ADK agent runtimes.
-* Must require **zero Kubernetes cluster or node pool management**.
+* **A.** On Cloud Run, using the other team's existing setup, with a Dockerfile for the agent and `DatabaseSessionService` backed by Cloud SQL for sessions.
+* **B.** On GKE Autopilot, so that Google manages the nodes while the team keeps full control of the agent's pods, scaling policies and networking configuration.
+* **C.** On Cloud Run functions, deploying the agent as an HTTP-triggered function so that no container image or Dockerfile has to be maintained by the team.
+* **D.** On Agent Runtime, using `agents-cli deploy -d agent_runtime`, which provides a fully managed runtime for Python ADK agents with managed sessions and memory.
 
-**Which deployment target should you select?**
+---
 
-* **A.** Deploy the agent to **Agent Runtime** using `agents-cli deploy -d agent_runtime`.
-* **B.** Deploy the agent as a StatefulSet on Google Kubernetes Engine (GKE) Standard with manual node pool scaling.
-* **C.** Deploy the agent to a static Compute Engine VM instance running a custom systemd startup script.
-* **D.** Deploy the agent into an App Engine Flexible environment using custom Docker SSH configurations.
+#### **Answer & Explanation**
+* **Correct Answer: D**
+  * **Why it's correct:** Agent Runtime is built for Python ADK agents. It manages scaling, identity, sessions and memory integration, so a small Python team without container experience has the least to operate.
+  * **Why Distractor A fails:** Cloud Run is a valid serverless option, but the team would own the container, the session database and the wiring between them, which is more operational work than Agent Runtime for a Python-only ADK agent.
+  * **Why Distractor B fails:** Autopilot removes node management, but the team still has to write and operate Kubernetes manifests, which it has no experience with.
+  * **Why Distractor C fails:** Functions are designed for short, event-driven handlers. They do not provide managed agent sessions or memory, and they are a poor fit for a long-running conversational agent.
+
+---
+
+### **Question 2 (Domain 4 - Canary Release on Cloud Run)**
+
+The claims agent runs on Cloud Run. Version 2 adds a new policy-validation tool. Before any customer traffic reaches v2, the QA team wants to test it on the production service. After QA approves it, 10% of customer traffic should go to v2 and 90% should stay on v1. No customer should receive v2 before QA has approved it.
+
+**What should you do?**
+
+* **A.** Deploy v2 with no traffic and a revision tag, have QA test it through the tag's dedicated URL, and then update traffic to send 10% to v2 and 90% to v1.
+* **B.** Deploy v2 as a separate Cloud Run service, have QA test that service's URL, and then configure a load balancer with weighted backends that send 10% of traffic to v2.
+* **C.** Deploy v2 normally, and immediately afterwards update traffic to send 10% to v2 and 90% to v1 so that QA can test with the real customer traffic split in place.
+* **D.** Deploy v2 with no traffic, and add logic to v1 that forwards 10% of requests to v2 based on a hash of the customer ID, so that each customer consistently sees one version.
 
 ---
 
 #### **Answer & Explanation**
 * **Correct Answer: A**
-  * **Why it's correct:** **Agent Runtime** on Gemini Enterprise Agent Platform is a fully managed, serverless execution environment designed specifically for Python ADK agents. It handles container provisioning, scaling, security isolation, and mTLS identity attestation out of the box without managing clusters or VMs.
-  * **Why Distractor B fails:** GKE Standard requires managing Kubernetes nodes, pod manifests, and cluster control planes, violating the requirement for zero cluster management.
-  * **Why Distractor C fails:** Compute Engine VMs are unmanaged infrastructure requiring manual OS patching, scaling, and systemd maintenance.
-  * **Why Distractor D fails:** App Engine Flexible has higher cold-start latencies, lacks native ADK tooling integration, and requires managing custom app.yaml configurations.
+  * **Why it's correct:** A revision deployed with no traffic and a tag gets its own URL that only QA uses. Once QA approves, a traffic update splits production traffic 90/10 between the revisions. Customers never see v2 before approval.
+  * **Why Distractor B fails:** It works, but it adds a second service and a load balancer to manage when Cloud Run's built-in revision traffic splitting already provides the same result.
+  * **Why Distractor C fails:** A normal deploy sends 100% of traffic to v2 until the split is applied, so customers are exposed to v2 before QA approves it.
+  * **Why Distractor D fails:** It moves routing into application code, which the platform already handles, and adds a code change and an extra network hop for every forwarded request.
 
 ---
 
-### **Question 2 (Domain 4 - Canary Deployments & Traffic Splitting)**
+### **Question 3 (Domain 4 - Rollback)**
 
-**Context:** The insurance claims team has updated their agent code (version v2) to incorporate a new policy validation tool. To minimize production risk, they want to test v2 against live customer requests while keeping the majority of traffic on the stable version v1.
+Twenty minutes into the 90/10 canary, Cloud Monitoring shows that the v2 revision's 5xx error rate has jumped to 8%. Revision v1 is still deployed and healthy. The on-call engineer must stop customer impact as quickly as possible, and the development team wants to investigate the v2 revision afterwards.
 
-**Goal:** Implement a canary release strategy.
+**What should the on-call engineer do?**
 
-**Constraints:**
-* Must route exactly **10% of live production traffic** to revision v2 and **90% to revision v1**.
-* Traffic splitting must be enforced at the infrastructure/network routing layer without modifying prompt code or system instructions.
-
-**Which strategy should you implement?**
-
-* **A.** Configure **traffic splitting / revision allocation** on the deployment target (Agent Runtime or Cloud Run) to allocate 90% of incoming requests to revision v1 and 10% to revision v2.
-* **B.** Add a system instruction in prompt code instructing the LLM to execute v2 logic for 10% of incoming user messages.
-* **C.** Delete revision v1 immediately and rely on Cloud Build retries if v2 encounters errors.
-* **D.** Deploy a Model Armor template in `Inspect and block` mode configured to drop 90% of incoming prompts.
+* **A.** Redeploy the v1 container image from Artifact Registry as a new revision with 100% of traffic, so that the service is guaranteed to run a known-good build.
+* **B.** Revert the v2 commit in the repository and let the CI/CD pipeline rebuild, evaluate and deploy the previous version through the normal release process.
+* **C.** Update the service's traffic settings to send 100% of traffic to the existing v1 revision, and leave the v2 revision deployed with no traffic.
+* **D.** Delete the v2 revision, so that Cloud Run automatically sends all of its traffic back to the remaining healthy v1 revision.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Both Agent Runtime and Cloud Run natively support **revision-based traffic splitting**. Allocating 90% of traffic to revision v1 and 10% to revision v2 routes live user requests at the infrastructure layer cleanly without touching application code.
-  * **Why Distractor B fails:** LLMs cannot perform deterministic traffic percentage routing; embedding routing logic in prompts wastes tokens and causes non-deterministic behavior.
-  * **Why Distractor C fails:** Deleting v1 creates immediate downtime if v2 fails, defeating the purpose of a canary deployment.
-  * **Why Distractor D fails:** Model Armor drops invalid/dangerous prompts; it cannot route traffic between application software revisions.
+* **Correct Answer: C**
+  * **Why it's correct:** A traffic update takes effect in seconds, needs no build, and sends everyone to the known-good revision. The v2 revision stays available, without traffic, for investigation.
+  * **Why Distractor A fails:** It works, but it creates and starts a new revision, which is slower than moving traffic to the v1 revision that is already running.
+  * **Why Distractor B fails:** A full build, evaluation and deploy cycle takes minutes to hours, during which customers keep receiving errors.
+  * **Why Distractor D fails:** Cloud Run does not let you delete a revision that is receiving traffic, and deleting it would also remove what the team needs to investigate.
 
 ---
 
-### **Question 3 (Domain 4 - Automated Monitoring & Zero-Downtime Rollback)**
+### **Question 4 (Domain 4 - Cold Starts)**
 
-**Context:** During the 90/10 canary rollout of claims agent v2, Cloud Monitoring detects a spike in 5xx HTTP errors and a 3-second increase in average response latency on revision v2.
+Claims traffic is close to zero overnight and rises sharply during storms. The first requests to each new instance take about 2.5 seconds longer while dependencies load. The business wants the first claims of a storm to be answered without that delay, while keeping overnight costs low and still scaling for storm peaks.
 
-**Goal:** Revert production traffic back to stable revision v1 instantly to protect customer experience.
+**What should you do?**
 
-**Constraints:**
-* Must achieve **zero-downtime rollback**.
-* Must update network routing configuration to send 100% of traffic back to revision v1 without re-building container images.
-
-**Which action should the operations team take?**
-
-* **A.** Trigger an automated or one-click traffic update setting **100% traffic allocation to revision v1** in Agent Runtime or Cloud Run.
-* **B.** Re-run `agents-cli create --prototype` locally and upload the resulting zip file to Cloud Storage.
-* **C.** Delete the Google Cloud Project and restore all resources from cold tape backups.
-* **D.** Increase model temperature to `2.0` on revision v2 to bypass latency checks.
+* **A.** Change the service's billing to instance-based billing (CPU always allocated), so that instances keep their loaded dependencies ready between requests.
+* **B.** Set a small minimum number of instances, such as 1 or 2, and enable startup CPU boost, while keeping a maximum that is high enough for storm peaks.
+* **C.** Create a Cloud Scheduler job that sends a request to the service every minute, so that Cloud Run keeps an instance running and does not scale it down to zero.
+* **D.** Set the minimum number of instances to the number needed for a typical storm peak, so that the full storm capacity is always running and ready.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Revision management in serverless platforms keeps previous container revisions active in the background. Updating the traffic allocation map to set 100% traffic to revision v1 instantly reroutes network traffic at the gateway, completing a zero-downtime rollback in seconds.
-  * **Why Distractor B fails:** Creating a new prototype locally requires rebuilding and re-testing code, taking minutes or hours while live production users experience errors.
-  * **Why Distractor C fails:** Deleting the GCP project causes catastrophic enterprise downtime and data loss.
-  * **Why Distractor D fails:** Raising model temperature increases hallucination rates and randomness; it does not resolve backend code exceptions or network latency.
-
----
-
-### **Question 4 (Domain 4 - Cold-Start Optimization)**
-
-**Context:** Claims processing agents experience sudden traffic spikes during major storm events. When scaling up from zero instances, the initial request on a new container instance experiences a 2.5-second "cold start" delay while initializing Python dependencies and pre-loading embeddings.
-
-**Goal:** Eliminate cold-start latency for baseline user traffic during critical operational windows.
-
-**Constraints:**
-* Must guarantee that at least one container instance remains warm and ready to serve incoming requests instantly.
-* Must preserve serverless autoscaling capabilities for traffic bursts beyond baseline capacity.
-
-**Which configuration parameter should you adjust on the deployment revision?**
-
-* **A.** Set **minimum instances (`min_instances = 1` or higher)** on the deployment revision configuration.
-* **B.** Disable autoscaling and pin CPU allocation to 100% permanent utilization.
-* **C.** Store container images on local developer laptops instead of Google Artifact Registry.
-* **D.** Convert all Python ADK code into shell scripts executed via local bash tools.
-
----
-
-#### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Setting **`min_instances`** (e.g., `min_instances = 1`) ensures the platform keeps pre-warmed container instances running at all times. Incoming baseline requests hit warm containers with zero cold-start latency, while autoscaling dynamically provisions additional instances during traffic spikes.
-  * **Why Distractor B fails:** Disabling autoscaling prevents the system from expanding capacity during storm traffic spikes, leading to request queueing or crashes.
-  * **Why Distractor C fails:** Storing container images locally makes them unreachable by Google Cloud serverless deployment engines.
-  * **Why Distractor D fails:** Converting Python ADK agent code to shell scripts destroys framework structure, state management, and tool integration.
+* **Correct Answer: B**
+  * **Why it's correct:** Minimum instances keep a small warm baseline, so the first requests avoid the cold start, and autoscaling still adds instances for peaks. Startup CPU boost shortens the start time of the instances added during a spike.
+  * **Why Distractor A fails:** CPU allocation affects how instances are billed and whether they have CPU between requests; with a minimum of zero, the service still scales to zero and cold-starts.
+  * **Why Distractor C fails:** A workaround with no guarantee. Cloud Run can still replace or scale down the instance, and it adds unnecessary requests.
+  * **Why Distractor D fails:** It removes cold starts but pays for storm-level capacity all night, which breaks the cost requirement.
 
 ---
 
 ### **Question 5 (Domain 3 & Domain 4 - State Compatibility Across Revisions)**
 
-**Context:** During a 90/10 canary split between agent revisions v1 and v2, a customer engages in a multi-turn conversation. Because traffic splitting operates per request, turn 1 is routed to revision v1, while turn 2 is routed to revision v2.
+The claims agent stores sessions in `DatabaseSessionService`. In v2, the developers renamed the state key `claim_step` to `claim_stage` and changed its values from integers to strings. During the 90/10 canary, some customers' conversations restart from the beginning. Traces show their turns alternating between v1 and v2 revisions within the same session.
 
-**Goal:** Ensure the user's session history and active state remain fully accessible when switching between revisions mid-conversation.
+**What should you do?**
 
-**Constraints:**
-* Must NOT store session state inside ephemeral local container instance memory.
-* Must enforce schema compatibility for `session.state` across candidate code revisions.
-
-**Which architectural combination guarantees session continuity?**
-
-* **A.** Externalize short-term state using **`DatabaseSessionService`** (Cloud SQL / AlloyDB) or **`Agent Platform Sessions`**, and maintain backwards-compatible `session.state` schema definitions between v1 and v2.
-* **B.** Save `session.state` to the local `/tmp/` directory of the v1 container instance and send local HTTP pings to v2.
-* **C.** Force the user's browser to store the full session history in HTTP cookies up to 10MB.
-* **D.** Disable session history completely and require users to re-submit full conversation context on every turn.
+* **A.** Enable session affinity on the service, so that each customer's turns stay on the revision that served their first request for the whole conversation.
+* **B.** Configure v1 and v2 to use separate session databases, so that each revision always reads state in the format it expects and cannot corrupt the other.
+* **C.** Before continuing the canary, run a script that converts every existing session to the new `claim_stage` key and string values used by v2.
+* **D.** Change v2 to read either key and to keep writing `claim_step` in the old format alongside `claim_stage` until v1 is retired, then remove the old key.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Externalizing session storage to a central, persistent service (`DatabaseSessionService` or `Agent Platform Sessions`) ensures that any instance—regardless of revision—can fetch and write to the active session. Maintaining schema compatibility between v1 and v2 prevents version mismatches when user turns hit different revisions.
-  * **Why Distractor B fails:** Container `/tmp/` directories are isolated to individual container instances. Container instance v2 cannot read local disk files from container instance v1.
-  * **Why Distractor C fails:** HTTP cookies are subject to strict browser size limits (~4KB), exposing conversation history to tampering and bandwidth bloat.
-  * **Why Distractor D fails:** Disabling sessions severely degrades user experience by requiring users to re-explain their context on every turn.
-
----
+* **Correct Answer: D**
+  * **Why it's correct:** Because traffic is split per request, both revisions read and write the same sessions during the canary. An expand-and-contract change keeps the state readable by both versions and removes the old key only after v1 no longer serves traffic.
+  * **Why Distractor A fails:** Session affinity is best effort. When instances scale or restart, a customer can still move to the other revision and hit the incompatible state.
+  * **Why Distractor B fails:** A customer who moves between revisions would find no session at all in the other database, which makes the problem worse.
+  * **Why Distractor C fails:** v1 still serves 90% of traffic and does not understand the new key and format, so migrating every session breaks the majority of conversations.

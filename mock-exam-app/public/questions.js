@@ -145,6 +145,159 @@ window.EXAM_DATA = {
     5
    ],
    "domainLabel": "**Domain 5** (Agent Gateway Ingress/Egress, Model Armor, Agent Registry, VPC Service Controls)."
+  },
+  {
+   "id": 11,
+   "title": "Renewable Energy Field Technician Assistant",
+   "context": "A renewable energy company operates wind and solar farms in several regions. Its operations team is building low-code assistants: a technician assistant in Agent Designer that helps field crews troubleshoot turbines and inverters from technical manuals, and a public chat for residential solar customers.",
+   "goal": "Deliver assistants that stay in scope, follow safety procedures, and return predictable output, configured entirely in the console.",
+   "constraints": [
+    "The team has conversation designers but no developers, so everything must be configured in the console.",
+    "Diagnostic answers must never skip electrical isolation checks.",
+    "Alert extractions must be machine-readable by the maintenance ticketing system."
+   ],
+   "domains": [
+    1
+   ],
+   "domainLabel": "**Domain 1** (System Instructions, Few-Shot Prompting, Chain-of-Thought, Dynamic Parameter Templating, Low-Code Platform Selection)."
+  },
+  {
+   "id": 12,
+   "title": "Aviation Maintenance Assistant on Conversational Agents",
+   "context": "A commercial airline is building a voice and chat assistant for hangar technicians in Conversational Agents (Dialogflow CX) with Agent Search data stores. It covers engine, avionics, and cabin maintenance procedures, inventory lookups, and decades of scanned logs, photos, and wiring diagrams.",
+   "goal": "Deliver a deterministic, auditable maintenance assistant that several teams can build in parallel and that can answer from multimodal records.",
+   "constraints": [
+    "Maintenance procedures must follow a fixed, auditable sequence of steps.",
+    "Technicians work in noisy hangars, so silence, garbled speech, and backend failures must be handled gracefully.",
+    "The team wants to retire its custom OCR and text-parsing code."
+   ],
+   "domains": [
+    1
+   ],
+   "domainLabel": "**Domain 1** (Flows, Intent vs. Condition Routes, Event Handlers, Multimodal Ingestion, Form Parameters)."
+  },
+  {
+   "id": 13,
+   "title": "Clinical Trial Team Adopting Agents CLI",
+   "context": "A pharmaceutical company's software team is standardizing how it builds ADK agents for clinical-trial operations. Developers use AI coding assistants, and the team is adopting `agents-cli` for scaffolding, local testing, and deployment.",
+   "goal": "Go from a quick local prototype to a Cloud Run deployment with CI/CD without losing work or guessing at conventions.",
+   "constraints": [
+    "The deployment target is undecided at the start, and cloud infrastructure requires a security review.",
+    "Custom agent code must be preserved as the project matures.",
+    "CI needs a fast smoke test in addition to the full evaluation suite."
+   ],
+   "domains": [
+    2
+   ],
+   "domainLabel": "**Domain 2** (Injected Skills, Prototype Scaffolding, Scaffold Enhance, Playground vs. Run, Project Manifest)."
+  },
+  {
+   "id": 14,
+   "title": "Automotive Manufacturer Exposing Systems via MCP",
+   "context": "An automotive manufacturer is connecting plant-floor databases, ERP systems, and its own ADK agents to coding assistants and production agents through the Model Context Protocol.",
+   "goal": "Provide secure, shared, least-privilege MCP access to enterprise systems for both local development and production agents.",
+   "constraints": [
+    "Production MCP servers must run privately in the VPC, scale independently, and authenticate with IAM.",
+    "No secrets may appear in container images or repositories.",
+    "Shared MCP servers are owned by other teams and cannot be modified for a single consumer."
+   ],
+   "domains": [
+    2
+   ],
+   "domainLabel": "**Domain 2** (MCP Transports, MCP Toolbox for Databases, Secret Manager, tool_filter, to_mcp_server)."
+  },
+  {
+   "id": 15,
+   "title": "Telecom Network Analytics with Agent Skills and Data Agent Kit",
+   "context": "A telecom provider's data team uses coding assistants and ADK agents to analyze 5G and fiber network telemetry in BigQuery and dbt. It maintains a growing library of custom Agent Skills for network analysis procedures.",
+   "goal": "Keep context small and costs low while giving assistants and agents the procedures, tools, and data access they need.",
+   "constraints": [
+    "The library of skills is large and still growing.",
+    "Analysts work in their IDE and do not want to paste schemas by hand.",
+    "The engineer-facing agent must stay on a high-quality model while telemetry work runs on a cheaper one."
+   ],
+   "domains": [
+    2,
+    3
+   ],
+   "domainLabel": "**Domain 2** (Skill Levels, Skill Folder Structure, Data Agent Kit) & **Domain 3** (SkillToolset, AgentTool Model Tiering)."
+  },
+  {
+   "id": 16,
+   "title": "Media Localization with Dynamic ADK Orchestration",
+   "context": "A global streaming company localizes video assets through subtitling, dubbing, format validation, and compliance review. It orchestrates specialized ADK agents in a post-production pipeline.",
+   "goal": "Route work to the right agent reliably, keep contexts isolated, and keep a growing pipeline understandable.",
+   "constraints": [
+    "Experiments and customer-tier routing must be deterministic and auditable.",
+    "Non-AI processing steps should not incur model calls.",
+    "The pipeline includes rework loops and conditional skips."
+   ],
+   "domains": [
+    3
+   ],
+   "domainLabel": "**Domain 3** (LLM Delegation, AgentTool vs. Transfer, RoutedAgent, Custom BaseAgent, Graph Workflows)."
+  },
+  {
+   "id": 17,
+   "title": "Private Banking Assistant with State and Long-Term Memory",
+   "context": "A wealth management firm is building an ADK advisory assistant on Cloud Run that tracks conversations in progress and remembers each client's goals and risk profile across years of sessions.",
+   "goal": "Scope state correctly, keep long-term memory accurate as facts change, and meet regulatory retention and isolation rules.",
+   "constraints": [
+    "One client's data must never be retrievable in another client's session.",
+    "Memories must be retained for no more than seven years and must be auditable.",
+    "The service autoscales to hundreds of instances."
+   ],
+   "domains": [
+    3
+   ],
+   "domainLabel": "**Domain 3** (State Prefixes, Memory Bank vs. RAG Memory, Memory Ingestion APIs, TTL and Revisions, Session Backends)."
+  },
+  {
+   "id": 18,
+   "title": "Hotel Concierge Agents Acting on Guests' Behalf",
+   "context": "A hotel group runs concierge agents that update guests' partner loyalty profiles, book services through partner agents, and charge guests for upgrades. Dozens of agents, MCP servers, and skills are spread across its brands.",
+   "goal": "Act for guests with the right authority, collaborate with partner agents securely, and govern what exists and what can be called.",
+   "constraints": [
+    "No shared credentials for guest accounts, and no raw secrets in agent prompts or state.",
+    "Partner agents are built on other frameworks and hosted in other clouds.",
+    "High-value or non-refundable charges require explicit guest confirmation."
+   ],
+   "domains": [
+    3,
+    5
+   ],
+   "domainLabel": "**Domain 3** (Auth Manager, Agent Registry, A2A Protocol, Long-Running Tasks) & **Domain 5** (Human-in-the-Loop Guardrails)."
+  },
+  {
+   "id": 19,
+   "title": "Mining Exploration Assistant with RAG over a Large Corpus",
+   "context": "A mining company is building a research assistant over 500,000 geological survey reports, drill logs, and site maps, using RAG Engine and ADK.",
+   "goal": "Retrieve precise, well-grounded context for both code-based and conceptual queries, and catch quality regressions before release.",
+   "constraints": [
+    "Reports contain complex tables and multi-column layouts.",
+    "Queries mix exact site codes with natural-language concepts.",
+    "Every retrieval change must be evaluated against a baseline."
+   ],
+   "domains": [
+    3,
+    4
+   ],
+   "domainLabel": "**Domain 3** (Layout Parsing, Hybrid Search with RRF, Reranking) & **Domain 4** (Groundedness Evaluation, Eval Compare)."
+  },
+  {
+   "id": 20,
+   "title": "FinTech Settlement Agents in Production",
+   "context": "A payments company runs settlement, reconciliation, and fraud-scoring agents across GKE, Agent Runtime, and Cloud Run, all connected to private databases in its VPC.",
+   "goal": "Choose the right runtime for each workload, keep traffic private, control costs, and release new versions safely.",
+   "constraints": [
+    "No agent traffic to internal databases may cross the public internet.",
+    "Finance needs SQL-queryable cost data with long retention.",
+    "Releases must be gated on more than latency and errors."
+   ],
+   "domains": [
+    4
+   ],
+   "domainLabel": "**Domain 4** (Deployment Targets, Private Egress, BigQuery Agent Analytics, Eval Optimize, Canary Metrics)."
   }
  ],
  "questions": [
@@ -1454,6 +1607,1306 @@ window.EXAM_DATA = {
     "A": "An IAM permission problem would return 403, and the role is already granted.",
     "B": "Nothing about the network changed, and a routing problem would cause timeouts or connection errors rather than a 498 response from the gateway.",
     "D": "Model Armor is an optional inspection step in the gateway's enforcement chain; it is not required before traffic is allowed."
+   }
+  },
+  {
+   "id": "s11q1",
+   "scenario": 11,
+   "number": 1,
+   "header": "Domain 1 - Structuring System Instructions",
+   "domains": [
+    1
+   ],
+   "context": "A renewable energy company built a technician assistant in Agent Designer. Its system instructions are a single paragraph that says the agent \"helps wind and solar technicians.\" In testing, the assistant answers questions about energy stock prices, formats diagnostic steps differently every time, and sometimes gives high-voltage repair guidance without first telling the technician which certification the task requires. The operations team has no developers and must fix this in the console.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Rewrite the instructions into sections for identity, scope and refusals, diagnostic method, and output format, including the certification check.",
+    "B": "Add few-shot examples that pair off-topic questions with polite refusals, and keep the existing one-paragraph instruction for everything else.",
+    "C": "Connect a data store that contains only turbine and inverter manuals, so the assistant can only answer from maintenance content.",
+    "D": "Create a Model Armor input template with responsible AI filters set to `LOW_AND_ABOVE` to block questions outside the maintenance domain."
+   },
+   "answer": "A",
+   "why": {
+    "A": "All three problems come from underspecified instructions. Clear sections for persona, boundaries, method and output format give the model explicit rules for scope, structure and the certification check, and all of it is configured in the console.",
+    "B": "Examples only cover the off-topic cases someone thought to write down. They do nothing about inconsistent formatting or the missing certification check.",
+    "C": "Grounding adds sources but does not define scope, format or safety behavior. The model can still answer from general knowledge unless the instructions say not to.",
+    "D": "Responsible AI filters detect harmful content categories such as hate speech or dangerous content. They do not recognize a question as off-topic for the business."
+   }
+  },
+  {
+   "id": "s11q2",
+   "scenario": 11,
+   "number": 2,
+   "header": "Domain 1 - Enforcing Output Format with Examples",
+   "domains": [
+    1
+   ],
+   "context": "The assistant extracts alert codes from raw turbine logs and returns them for the maintenance ticketing system. The system instructions already say \"respond only in JSON with the fields `code`, `severity` and `turbine_id`.\" About 15% of responses still fail to parse: some are wrapped in an explanatory sentence, some use `severity_level` instead of `severity`, and severity values vary between `High`, `HIGH` and `3`. The fix must be made in the prompt, with no parsing code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Set the temperature to 0 in the generation settings so the model returns the same structure for every log it processes.",
+    "B": "Tell the model to reason through each field step by step before writing the JSON, so it checks every field name against the specification.",
+    "C": "Repeat the required field names in capital letters at both the start and the end of the system instructions to increase their emphasis.",
+    "D": "Add three examples to the instructions, each pairing a raw log excerpt with the exact expected JSON, including one log with no severity value."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Few-shot examples show the model the exact output: field names, the allowed severity values, no surrounding prose, and how to handle a missing value. For format consistency, demonstrating the output works better than describing it.",
+    "A": "A lower temperature reduces randomness, but it does not teach the model the schema or the allowed severity values. The model can produce the same wrong format consistently.",
+    "B": "Step-by-step reasoning adds reasoning text to the response, which makes the \"wrapped in prose\" problem worse and does not define the allowed values.",
+    "C": "Emphasis is still only a description. It does not settle the value format, such as `High` versus `3`, and it tends to have less effect than concrete examples."
+   }
+  },
+  {
+   "id": "s11q3",
+   "scenario": 11,
+   "number": 3,
+   "header": "Domain 1 - Multi-Step Reasoning",
+   "domains": [
+    1
+   ],
+   "context": "Technicians ask the assistant to troubleshoot inverter voltage anomalies. A correct diagnosis requires checking ambient temperature, then phase variance, then confirming electrical isolation before any hands-on step. Conversation logs show that the safety section of the manual is retrieved every time, but the assistant often jumps straight to a recommendation and skips the isolation check. The team must keep the current model because of its latency budget, and it cannot write code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Split the troubleshooting manual into smaller documents in the data store so that the isolation procedure ranks higher in retrieval results.",
+    "B": "Instruct the model to work through temperature, phase variance and isolation status in that order, stating each result before it gives a recommendation.",
+    "C": "Add few-shot examples that show the correct final recommendation for the three most common inverter faults the technicians report.",
+    "D": "Add a condition route that checks whether the response mentions isolation and sends the user to a static safety page when it does not."
+   },
+   "answer": "B",
+   "why": {
+    "B": "This is chain-of-thought prompting. Requiring the model to go through each check in order before concluding stops it from skipping intermediate steps, and it is a prompt change that works on the current model.",
+    "A": "The logs show retrieval already returns the safety content. The failure is in reasoning, not retrieval.",
+    "C": "Examples that show only final answers teach the model to jump to conclusions, and they do not generalize to faults outside the three examples.",
+    "D": "Condition routes evaluate session parameters and other state, not the text of the generated answer. Even if they could, a keyword check would catch the missing step only after a bad answer was produced."
+   }
+  },
+  {
+   "id": "s11q4",
+   "scenario": 11,
+   "number": 4,
+   "header": "Domain 1 - Dynamic Parameter Templating",
+   "domains": [
+    1
+   ],
+   "context": "When a technician signs in, the assistant's start page receives their substation ID and certification tier and stores them as the session parameters `substation_id` and `technician_tier`. Even so, the generative responses still ask technicians which substation they work at and give tier-restricted procedures to technicians who are not certified for them. The team wants every response personalized for the technician, with no webhook code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Reference both session parameters in the instructions with parameter placeholders, so their values are filled into the prompt at runtime.",
+    "B": "Create a separate agent version for each substation with its ID written into the instructions, and route technicians to their version when they sign in.",
+    "C": "Add an instruction telling the model to use the substation and certification tier that the technician mentioned earlier in the conversation.",
+    "D": "Store a profile document for each technician in the data store, and let the data store tool retrieve the substation and tier when needed."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Session parameters are not visible to the model unless they are templated into the prompt. Parameter placeholders are replaced with the current session values at runtime, so each response is personalized without code.",
+    "B": "One agent version per substation is a maintenance burden, and it still does nothing with the certification tier.",
+    "C": "The values were set by the sign-in flow, not said by the technician, so they are not in the conversation for the model to find.",
+    "D": "Retrieval is probabilistic and can return the wrong profile or none. Values that are already in the session should be passed directly instead of searched for."
+   }
+  },
+  {
+   "id": "s11q5",
+   "scenario": 11,
+   "number": 5,
+   "header": "Domain 1 - Choosing a Low-Code Platform",
+   "domains": [
+    1
+   ],
+   "context": "The company also wants a public website chat for residential solar customers. It will answer questions about warranties and net-metering policies from about 400 PDF guides, and look up a customer's latest bill through an existing billing REST API that has an OpenAPI specification. The team consists of two conversation designers with no Python experience, and the chat must launch in six weeks.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which approach should you recommend?",
+   "options": {
+    "A": "Build an ADK agent with an Agent Search tool and an OpenAPI tool, deploy it to Agent Runtime, and embed it in the website with a lightweight custom frontend.",
+    "B": "Index the PDFs with Gemini Enterprise's native connectors and give customers access to the Gemini Enterprise app so they can ask questions and look up their bills.",
+    "C": "Build a CX Agent Studio agent with a data store tool over the PDFs and an OpenAPI tool for billing, and embed it with the prebuilt web chat widget.",
+    "D": "Add an Agent Search website search widget over the PDFs, and publish a separate billing FAQ page that explains how customers can find their latest bill."
+   },
+   "answer": "C",
+   "why": {
+    "C": "CX Agent Studio is the low-code option for customer-facing conversational agents. Data store tools cover open-ended questions over the PDFs, an OpenAPI tool calls the billing API without custom code, and the prebuilt web widget handles embedding.",
+    "A": "The architecture would work, but ADK is code-first, and the team has no Python experience and a six-week deadline.",
+    "B": "Gemini Enterprise is a workforce product for employees, not a public chat for customers, and it does not provide a customer billing lookup.",
+    "D": "A search widget returns results, not a conversation, and a static FAQ page does not meet the requirement to look up each customer's actual bill."
+   }
+  },
+  {
+   "id": "s12q1",
+   "scenario": 12,
+   "number": 1,
+   "header": "Domain 1 - Modular Flows for Multiple Teams",
+   "domains": [
+    1
+   ],
+   "context": "An airline's hangar assistant is built in Conversational Agents (Dialogflow CX). Three teams (engine maintenance, avionics, and cabin safety) each own part of the conversation. Today all 60 pages live in the Default Start Flow, and changes made by one team regularly break transition routes that another team depends on. Maintenance procedures must follow a deterministic, auditable sequence, and technicians should keep using a single assistant.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep the pages in the Default Start Flow, give each team a page-name prefix, and require a review from every team before any route change is published.",
+    "B": "Build three separate agents, one per team, and give technicians a separate chat entry point for engine, avionics, and cabin questions.",
+    "C": "Replace each team's pages with a generative playbook and let the model decide which team's playbook should handle each technician request.",
+    "D": "Split the agent into one flow per team, route into each flow from the Default Start Flow, and have each team own the pages and routes inside its flow."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Flows are the unit of modularity in Conversational Agents. Each team can build and test its own flow without touching the others, the Default Start Flow routes into them, and technicians still see one agent.",
+    "A": "Naming conventions and review gates do not change the architecture. All pages still share one state graph, so collisions continue and every change slows down.",
+    "B": "Separate agents give up the single entry point. Technicians would need to know which agent to ask, and questions that cross topics would have no home.",
+    "C": "Playbooks trade deterministic control for generative behavior. The requirement for an auditable, fixed sequence of maintenance steps calls for flows and pages."
+   }
+  },
+  {
+   "id": "s12q2",
+   "scenario": 12,
+   "number": 2,
+   "header": "Domain 1 - Intent Routes vs. Condition Routes",
+   "domains": [
+    1
+   ],
+   "context": "On the `InspectCompressor` page, a webhook writes the recorded damage score into `$session.params.damage_score`. If the score is above 7, the agent must move to `ReplaceBlade`. If the technician says the compressor looks clean, it must move to `RoutineSignoff`. The team configured both transitions as intent routes, using training phrases such as \"damage is high\", and the move to `ReplaceBlade` rarely fires, because technicians never say those words.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Use a condition route on `$session.params.damage_score > 7` for replacement, and an intent route for the clean statement.",
+    "B": "Keep both intent routes and add many more training phrases that describe high damage, so the intent matches a wider range of wording.",
+    "C": "Move both decisions into the webhook, and have it return the target page on every turn based on the score and the technician's raw text.",
+    "D": "Add a `sys.no-match` event handler that checks the damage score and transitions to `ReplaceBlade` when the score is above 7."
+   },
+   "answer": "A",
+   "why": {
+    "A": "The two triggers are different in kind. The score is data in session parameters, which a condition route evaluates directly. \"Looks clean\" is something the technician says, which is what intent routes match.",
+    "B": "The score is not in the technician's words, so no set of training phrases can reliably detect it.",
+    "C": "This moves routing into custom code and adds a webhook call to every turn, when condition routes handle the check natively.",
+    "D": "No-match fires only when the input fails to match anything. The damage check must run whenever the score is set, not only after unrecognized input."
+   }
+  },
+  {
+   "id": "s12q3",
+   "scenario": 12,
+   "number": 3,
+   "header": "Domain 1 - Handling Unexpected Events",
+   "domains": [
+    1
+   ],
+   "context": "Technicians use the assistant by voice in noisy hangars. Three problems keep ending conversations. Technicians go silent for a long time while inspecting a part. Engine noise garbles their speech. The inventory webhook sometimes times out, and the technician then hears a generic system error. The team wants the agent to recover gracefully from all three without writing code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Increase the inventory webhook timeout to the maximum allowed and add a generative fallback prompt that asks the technician to try again.",
+    "B": "Enable generative fallback on the agent so that the model produces a helpful response whenever the technician's input does not match an intent.",
+    "C": "Add event handlers for no-input, no-match, and webhook errors on the relevant pages and flows, each with a reprompt or a fallback transition.",
+    "D": "Create a route group with intents for \"repeat that\" and \"the system is down\" and attach it to every page in the maintenance flows."
+   },
+   "answer": "C",
+   "why": {
+    "C": "Silence, unrecognized input, and webhook failures each raise a built-in event. Event handlers on pages and flows let the agent reprompt, retry, or move to a fallback page without any code.",
+    "A": "A longer timeout only reduces one of the three problems and does nothing for silence or garbled speech.",
+    "B": "Generative fallback helps only with no-match. It does not cover silence or a failed webhook.",
+    "D": "Intents depend on the technician saying something recognizable. Silence and webhook errors produce no utterance to match."
+   }
+  },
+  {
+   "id": "s12q4",
+   "scenario": 12,
+   "number": 4,
+   "header": "Domain 1 - Multimodal Ingestion",
+   "domains": [
+    1
+   ],
+   "context": "The airline wants the assistant to answer questions from 30 years of scanned maintenance logs with handwritten annotations, photos of engine wear, and PDF manuals full of wiring diagrams. A vendor pipeline currently runs OCR on everything and indexes plain text. Answers that depend on a diagram or a photo are wrong or missing. The team wants to stop maintaining a custom pre-processing pipeline.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep the OCR pipeline, raise its scan resolution, and have engineers write a text caption for each photo and diagram before it is indexed.",
+    "B": "Ingest the original files into an Agent Search data store with multimodal parsing, so text, tables, and images are understood as they are.",
+    "C": "Replace the vendor pipeline with a Cloud Function that converts each page to text and indexes it in a structured data store keyed by tail number.",
+    "D": "Store the photos and diagrams in Cloud Storage and index only their file names and folder paths as metadata alongside the OCR text."
+   },
+   "answer": "B",
+   "why": {
+    "B": "Gemini-based multimodal ingestion reads text, tables, and visual content directly. The information in diagrams and photos stays searchable, and the custom OCR pipeline goes away.",
+    "A": "Manual captioning does not scale to 30 years of content and still loses most of the visual detail.",
+    "C": "It is still a custom text-conversion pipeline, and converting to text throws away the visual content that caused the problem.",
+    "D": "File names do not describe what an image shows, so questions about wear patterns or wiring still cannot be answered."
+   }
+  },
+  {
+   "id": "s12q5",
+   "scenario": 12,
+   "number": 5,
+   "header": "Domain 1 - Extracting Structured Parameters",
+   "domains": [
+    1
+   ],
+   "context": "Technicians say things like \"check inventory for part A320-884-X installed October 12th.\" The inventory webhook needs `part_number` and `install_date`. Today the webhook receives the raw text and parses it with custom string-handling code that breaks on new phrasings. Technicians sometimes leave out the date. The team wants to remove the parsing code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Add required form parameters to the page, using a regexp entity for the part number and the system date entity for the date.",
+    "B": "Add a generator that asks the model to extract the part number and date as JSON from each utterance, and pass its output to the inventory webhook.",
+    "C": "Create an intent with training phrases annotated for both parameters, and call the webhook directly from the intent route without a form on the page.",
+    "D": "Send the raw utterance to a data store tool over the inventory export, and let retrieval find the matching part and installation record."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Form parameters with entity types extract structured values from natural language, and the page's required-parameter prompts ask for anything missing before the webhook is called. No parsing code is needed.",
+    "B": "Generative extraction is not deterministic, and it has no built-in way to reprompt for a missing date. The webhook would still need to validate the output.",
+    "C": "Intent parameters are extracted, but without a form nothing prompts the technician when the date is missing, so the webhook gets incomplete input.",
+    "D": "An inventory lookup is a transactional query against the system of record. Retrieval over an export is neither exact nor current."
+   }
+  },
+  {
+   "id": "s13q1",
+   "scenario": 13,
+   "number": 1,
+   "header": "Domain 2 - Injected Coding Assistant Skills",
+   "domains": [
+    2
+   ],
+   "context": "A clinical software team ran `uvx google-agents-cli setup`, which installed skills into their coding assistants. A developer asks the assistant to add a callback that blocks the `check_eligibility` tool whenever the patient consent flag in session state is missing. Before setup, the assistant invented ADK method names for this kind of task. The team wants to confirm which injected skill supplies the knowledge the assistant needs for this request.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which skill applies?",
+   "options": {
+    "A": "`google-agents-cli-workflow`",
+    "B": "`google-agents-cli-adk-code`",
+    "C": "`google-agents-cli-scaffold`",
+    "D": "`google-agents-cli-eval`"
+   },
+   "answer": "B",
+   "why": {
+    "B": "The ADK code skill carries the ADK Python API patterns for agents, tools, orchestration, callbacks, and state, which is exactly what writing a `before_tool_callback` requires.",
+    "A": "The workflow skill guides the overall development lifecycle, code preservation, and model selection. It does not provide API-level callback patterns.",
+    "C": "The scaffold skill covers creating, enhancing, and upgrading projects, not writing agent logic.",
+    "D": "The eval skill covers datasets, metrics, and grading. It would help test the callback, not write it."
+   }
+  },
+  {
+   "id": "s13q2",
+   "scenario": 13,
+   "number": 2,
+   "header": "Domain 2 - Prototype-First Scaffolding",
+   "domains": [
+    2
+   ],
+   "context": "A data team has two days to show whether an agent can apply patient eligibility rules. Nobody has decided whether it will eventually run on Agent Runtime or Cloud Run, and the security team must review any cloud infrastructure before it is created. The team wants a standard project layout, including an evaluation dataset location, so that they can iterate locally right away.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Run `agents-cli create eligibility-agent --prototype` and iterate locally.",
+    "B": "Run `agents-cli create eligibility-agent` with Agent Runtime as the target, then delete the Terraform and CI files.",
+    "C": "Create `app/agent.py` by hand in an empty folder and add `pyproject.toml` and the eval dataset later.",
+    "D": "Run `agents-cli scaffold enhance -d agent_runtime` in an empty folder to generate the project."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Prototype mode creates the standard project structure for local development without deciding on a deployment target or generating infrastructure. Infrastructure can be added later, after review.",
+    "B": "It commits to a target before that decision has been made, and deleting generated files by hand is error-prone. It also produces infrastructure code before the security review.",
+    "C": "It works, but it gives up the standard layout, manifest, and eval dataset that the CLI and its skills expect, which slows the team down.",
+    "D": "`scaffold enhance` adds deployment infrastructure to an existing project. It is not meant to create a new project, and it would generate the infrastructure the team must avoid for now."
+   }
+  },
+  {
+   "id": "s13q3",
+   "scenario": 13,
+   "number": 3,
+   "header": "Domain 2 - Adding Deployment Infrastructure",
+   "domains": [
+    2
+   ],
+   "context": "The eligibility prototype passed its review. Developers have made substantial changes to `app/agent.py`, added tools, and extended the eval dataset. The team now needs a Dockerfile, Terraform, and a Cloud Build pipeline so that it can deploy to Cloud Run through CI/CD, and it must keep all existing work.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Create a new project with `agents-cli create` targeting Cloud Run, then copy `app/agent.py` and the tools into it.",
+    "B": "Run `agents-cli deploy -d cloud_run` from the prototype and add Terraform and the CI pipeline after the first deployment succeeds.",
+    "C": "Ask the coding assistant to write a Dockerfile, Terraform modules, and a `cloudbuild.yaml` from scratch in the prototype folder.",
+    "D": "Run `agents-cli scaffold enhance -d cloud_run` in the prototype project to add the deployment infrastructure."
+   },
+   "answer": "D",
+   "why": {
+    "D": "`scaffold enhance` adds a Dockerfile, Terraform, and Cloud Build configuration for the chosen target to an existing project and keeps the agent code.",
+    "A": "It works, but copying files by hand can miss changes, such as the extended eval dataset or dependency updates, and it is unnecessary.",
+    "B": "It postpones the infrastructure-as-code and CI/CD that the team needs now, so the first production deployment would happen outside the pipeline.",
+    "C": "Hand-writing infrastructure invites mistakes and inconsistency across teams. The CLI already generates tested templates for this."
+   }
+  },
+  {
+   "id": "s13q4",
+   "scenario": 13,
+   "number": 4,
+   "header": "Domain 2 - Local Testing Commands",
+   "domains": [
+    2
+   ],
+   "context": "A developer is refining a multi-turn consent conversation and wants to see each code change right away while chatting with the agent in a browser. Separately, the CI pipeline needs a fast smoke test that sends one prompt from the terminal and fails the build if the agent errors, before the full evaluation suite runs.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you recommend?",
+   "options": {
+    "A": "Use `agents-cli run` for both, scripting the multi-turn conversation as a series of single-prompt calls.",
+    "B": "Use `agents-cli playground` for both, with CI sending HTTP requests to the playground server.",
+    "C": "Use `agents-cli playground` for the developer and `agents-cli run \"prompt\"` for the CI smoke test.",
+    "D": "Use `agents-cli eval run` for the developer and `agents-cli run \"prompt\"` for the CI smoke test."
+   },
+   "answer": "C",
+   "why": {
+    "C": "The playground is a local web interface with hot reloading, suited to interactive multi-turn testing. `run` sends a single prompt from the terminal, which is suited to a quick CI smoke test.",
+    "A": "Separate `run` calls give up the interactive, hot-reloading experience the developer wants for refining the conversation.",
+    "B": "The playground is an interactive development server. Starting it and scripting HTTP calls against it in CI adds complexity when `run` already does the job.",
+    "D": "`eval run` executes and grades a dataset. It is not an interactive tool for refining a conversation."
+   }
+  },
+  {
+   "id": "s13q5",
+   "scenario": 13,
+   "number": 5,
+   "header": "Domain 2 - Project Layout and Manifest",
+   "domains": [
+    2
+   ],
+   "context": "To match their monorepo conventions, the team moved the agent code from `app/` to `src/eligibility/`. Importing the agent directly with Python still works, but `agents-cli playground` and `agents-cli deploy` now fail because they cannot find the agent.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Update `agent_directory` in `agents-cli-manifest.yaml` to point to the new folder.",
+    "B": "Add the new folder as a package in `pyproject.toml` and run `uv sync` again.",
+    "C": "Add an environment variable to `.env` that points the CLI to the new agent path.",
+    "D": "Rename `root_agent` after the new folder so that the CLI can find it by convention."
+   },
+   "answer": "A",
+   "why": {
+    "A": "The project manifest tells the CLI where the agent lives through `agent_directory`, which defaults to `app`. Updating it points every CLI command to the new location.",
+    "B": "`pyproject.toml` manages dependencies and packaging. It does not tell the CLI which directory contains the agent.",
+    "C": "`.env` holds local credentials and project settings. The CLI reads the agent location from the manifest.",
+    "D": "The CLI expects the entry point to be named `root_agent`. Renaming it would break discovery instead of fixing it."
+   }
+  },
+  {
+   "id": "s14q1",
+   "scenario": 14,
+   "number": 1,
+   "header": "Domain 2 - Choosing an MCP Transport",
+   "domains": [
+    2
+   ],
+   "context": "An automotive manufacturer built an MCP server that queries plant-floor databases. Developers run it on their laptops against local Docker databases while working in their coding assistants. The same server must also serve ADK agents running on Cloud Run in production, where it must scale on its own and authenticate callers with IAM. One engineer proposes bundling the server into each agent's container and starting it as a subprocess.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you recommend?",
+   "options": {
+    "A": "Use `stdio` locally, and run production as its own Cloud Run service that agents reach over Streamable HTTP with IAM tokens.",
+    "B": "Use `stdio` in both environments, bundling the server as a subprocess inside every agent container so that no network hop is added.",
+    "C": "Use Streamable HTTP in both environments, with developers' coding assistants connecting to the production server instead of their local databases.",
+    "D": "Use Streamable HTTP for local development and `stdio` in production, because `stdio` avoids network latency between the agent and its tools."
+   },
+   "answer": "A",
+   "why": {
+    "A": "`stdio` suits a local subprocess on a developer machine. A shared remote server that scales independently and uses IAM authentication needs an HTTP-based transport.",
+    "B": "Every agent instance would start its own server with its own database connections and credentials. The server could not scale independently and could not be shared or authenticated centrally.",
+    "C": "Developers would test against production data instead of their local databases, which is both a safety risk and slower.",
+    "D": "It reverses the roles. `stdio` works only for a local subprocess and cannot reach a separately scaled remote service."
+   }
+  },
+  {
+   "id": "s14q2",
+   "scenario": 14,
+   "number": 2,
+   "header": "Domain 2 - Self-Hosted Database MCP Server",
+   "domains": [
+    2
+   ],
+   "context": "Agent teams need to query Cloud SQL, Spanner, and AlloyDB. Each team currently writes its own Python database tools with its own connection handling, and a recent incident exhausted the Cloud SQL connections. The platform team wants one shared approach, running inside the private VPC, that any MCP-capable agent can use without custom driver code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Connect the agents to the Knowledge Catalog managed remote MCP server and let them run their queries through its tools.",
+    "B": "Publish a shared Python library of database tools with a built-in connection pool, and require every agent team to import it.",
+    "C": "Deploy MCP Toolbox for Databases on Cloud Run inside the VPC, define the approved queries as tools, and connect agents to it with `McpToolset`.",
+    "D": "Add a Cloud SQL Auth Proxy sidecar to each agent and give the model one `execute_sql` function tool for all of its queries."
+   },
+   "answer": "C",
+   "why": {
+    "C": "MCP Toolbox for Databases is an open-source MCP server built for this job. It pools connections centrally, supports Cloud SQL, Spanner, and AlloyDB, runs privately on Cloud Run, and exposes standard MCP tools to any client.",
+    "A": "Knowledge Catalog provides metadata and discovery. It is not a query-execution server with connection pooling for these databases.",
+    "B": "Each process still opens its own pool, so connection pressure grows with every agent instance. The library also serves only Python agents and must be maintained by the platform team.",
+    "D": "It does nothing for Spanner and still opens connections from every agent instance. Letting the model write arbitrary SQL is also a serious security risk."
+   }
+  },
+  {
+   "id": "s14q3",
+   "scenario": 14,
+   "number": 3,
+   "header": "Domain 2 - Credentials for a Self-Hosted MCP Server",
+   "domains": [
+    2
+   ],
+   "context": "The Toolbox server on Cloud Run needs database passwords. Today they are stored in `tools.yaml`, which is committed to a private repository and built into the container image. Security requires that no secrets appear in images or repositories, that access to them is audited, and that passwords can be rotated without rebuilding the image.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Remove the passwords from `tools.yaml` and set them as plain Cloud Run environment variables from the CI pipeline at deploy time.",
+    "B": "Encrypt `tools.yaml` with a Cloud KMS key, commit the encrypted file, and decrypt it in a startup script when the container starts.",
+    "C": "Upload the passwords to a private Cloud Storage bucket that only the service account can read, and download them when the container starts.",
+    "D": "Store the passwords in Secret Manager, grant the Toolbox service account Secret Accessor on them, and reference the secrets in the Cloud Run service."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Secret Manager keeps secrets out of code and images, audits each access, and supports versioned rotation. Cloud Run can expose a secret to the service directly, so rotating it does not require rebuilding the image.",
+    "A": "Plain environment variables are visible to anyone who can view the service configuration, and the secrets pass through the CI system.",
+    "B": "The encrypted file still lives in the repository and the image, rotation still requires a rebuild, and the decryption code is custom.",
+    "C": "Cloud Storage is not a secrets store. It has no secret versioning or rotation workflow, and it needs custom download code."
+   }
+  },
+  {
+   "id": "s14q4",
+   "scenario": 14,
+   "number": 4,
+   "header": "Domain 2 - Least-Privilege MCP Tools",
+   "domains": [
+    2
+   ],
+   "context": "A line-monitoring agent connects to a shared remote MCP server that exposes 30 plant tools, including write operations such as `halt_line` that other teams need. This agent should use only `check_assembly_line`, `get_part_status`, and `report_fault`. It sometimes calls unrelated tools, and its prompt carries all 30 tool schemas. The server is owned by another team and cannot be changed.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Add a system instruction that lists the three permitted tools and tells the agent never to call any of the other tools on the server.",
+    "B": "Pass `tool_filter` with the three tool names to the agent's `McpToolset`, so that only those tools are loaded and exposed to the model.",
+    "C": "Deploy a second copy of the MCP server that enables only the three tools, and point this agent at the new copy.",
+    "D": "Wrap the `McpToolset` in a sub-agent exposed through `AgentTool`, so that the 30 schemas stay out of the main agent's context."
+   },
+   "answer": "B",
+   "why": {
+    "B": "`tool_filter` limits the tools the agent discovers to an allowlist. The model never sees the other schemas, which reduces the context size and removes tools such as `halt_line` from what it can call, without changing the server. Server-side IAM still sets the outer boundary.",
+    "A": "An instruction is a soft control. All 30 schemas still load, and a confused or manipulated model can still call `halt_line`.",
+    "C": "It works, but it creates a second server to deploy and keep in sync when a client-side filter solves the problem.",
+    "D": "It moves the schemas out of the main context, but the sub-agent can still call all 30 tools, so least privilege is not achieved."
+   }
+  },
+  {
+   "id": "s14q5",
+   "scenario": 14,
+   "number": 5,
+   "header": "Domain 2 - Exposing an ADK Agent over MCP",
+   "domains": [
+    2
+   ],
+   "context": "A team built a supply-chain risk agent in ADK. Developers across the company want to call it from Claude Code and other MCP-capable IDE assistants as if it were a tool. The team does not want to write and maintain a separate server that wraps the agent.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Publish the agent to Gemini Enterprise with `agents-cli publish` so that developers can call it from their IDE assistants.",
+    "B": "Expose the agent through an `A2AServer` and configure the IDE assistants to use its agent card to discover and call it.",
+    "C": "Write a small MCP server that calls the agent's HTTP endpoint, with one MCP tool for each question type the agent supports.",
+    "D": "Use ADK's `to_mcp_server` to expose the agent as an MCP server that the IDE assistants can connect to."
+   },
+   "answer": "D",
+   "why": {
+    "D": "`to_mcp_server` turns an ADK agent into an MCP server, so any MCP client, including IDE assistants, can call it as a tool without a separate wrapper.",
+    "A": "Publishing to Gemini Enterprise makes the agent available to employees in the Gemini Enterprise app. It does not create an MCP endpoint for IDE assistants.",
+    "B": "A2A is for agent-to-agent collaboration. The IDE assistants are MCP clients and cannot use an A2A agent card.",
+    "C": "This is the separate wrapper the team wants to avoid, and ADK already provides the conversion."
+   }
+  },
+  {
+   "id": "s15q1",
+   "scenario": 15,
+   "number": 1,
+   "header": "Domain 2 - Skill Discovery and Context Cost",
+   "domains": [
+    2
+   ],
+   "context": "A telecom data team has installed 40 custom Agent Skills in its coding assistants. Some engineers worry that every session starts with a heavy context load, and they propose merging all 40 skills into one large skill. Before deciding, the lead wants to know what the assistant loads from each skill when a session starts.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What is loaded at session start?",
+   "options": {
+    "A": "The full `SKILL.md` of every installed skill, so that the assistant can follow any of them without an extra load step.",
+    "B": "Each skill's `SKILL.md` instructions and its `references/` folder, while scripts in `scripts/` are loaded only when run.",
+    "C": "Nothing from any skill until a user names one explicitly, after which that skill's full contents are loaded.",
+    "D": "Only the name and description from each skill's `SKILL.md` frontmatter, with instructions and resources loaded on demand."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Skills use progressive disclosure. Level 1 is only the name and description, which is enough for the assistant to decide relevance. Instructions (level 2) and resources (level 3) load only when needed. Forty skills cost little at startup, and merging them into one would make things worse, because one skill's instructions would load in full whenever any part of it was needed.",
+    "A": "Full instructions are level 2 and load only when the skill is activated.",
+    "B": "References are level 3 resources and load on demand, not at startup.",
+    "C": "The assistant needs the level 1 metadata to choose skills on its own. Users do not have to name a skill."
+   }
+  },
+  {
+   "id": "s15q2",
+   "scenario": 15,
+   "number": 2,
+   "header": "Domain 2 - Organizing Skill Resources",
+   "domains": [
+    2
+   ],
+   "context": "A 5G outage-analysis skill has a 1,200-line `SKILL.md`. It contains the step-by-step procedure, a Python log-parsing script pasted in as code blocks, the full 3GPP reference text, and a JSON schema of the network topology. The assistant is slow to use the skill, and it often rewrites the parsing script instead of running it.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Split the content into five smaller skills, each with its own `SKILL.md`, so that each piece loads separately.",
+    "B": "Keep the procedure in `SKILL.md`, and move the script to `scripts/`, the schema to `assets/`, and the 3GPP text to `references/`.",
+    "C": "Move the 3GPP reference and the schema into the frontmatter description, so that they are available as soon as the session starts.",
+    "D": "Keep everything in `SKILL.md`, but shorten the headings and remove the examples to reduce the total size of the file."
+   },
+   "answer": "B",
+   "why": {
+    "B": "Instructions belong in `SKILL.md`. Executable code goes in `scripts/` so that the assistant runs it instead of rewriting it, while schemas and long references load only when needed.",
+    "A": "It breaks one workflow across several skills that must be triggered separately, and each one still loads its content in full.",
+    "C": "The description is loaded for every session. Putting large content there makes every session heavier.",
+    "D": "The whole file still loads at activation, and the script is still inline, so the assistant keeps rewriting it."
+   }
+  },
+  {
+   "id": "s15q3",
+   "scenario": 15,
+   "number": 3,
+   "header": "Domain 2 - Data Agent Kit",
+   "domains": [
+    2
+   ],
+   "context": "Network analysts work in VS Code with a coding assistant to build BigQuery transformations in dbt. The assistant guesses column names, so analysts paste table schemas into the chat by hand. They also want the assistant to run dbt models and check lineage without leaving the IDE.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Install Data Agent Kit in the IDE, so that the assistant gets data skills and MCP tools for BigQuery and dbt.",
+    "B": "Write a custom skill that stores the current table schemas in `assets/` and includes a script that runs dbt commands.",
+    "C": "Configure MCP Toolbox for Databases with a BigQuery source, so that the assistant can query tables and read their schemas.",
+    "D": "Add a BigQuery connector to Gemini Enterprise, so that analysts can ask about table structures in the Gemini Enterprise app."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Data Agent Kit connects coding assistants to Google Data Cloud services, including BigQuery and dbt, with prebuilt skills and MCP tools. The assistant can inspect live schemas and run pipelines from the IDE.",
+    "B": "Stored schemas become stale, and the team would maintain its own dbt tooling that already exists.",
+    "C": "This covers querying tables, but not dbt execution, lineage, or data-engineering workflows.",
+    "D": "It moves the work out of the IDE and does not help the assistant run dbt."
+   }
+  },
+  {
+   "id": "s15q4",
+   "scenario": 15,
+   "number": 4,
+   "header": "Domain 3 - Loading Skills in ADK Code",
+   "domains": [
+    3
+   ],
+   "context": "An engineer is building an incident-response agent in ADK and wants it to use an existing skill in `./skills/outage`, which contains `SKILL.md`, scripts, and references. The skill's content should load progressively, just as it does in a coding assistant, instead of being in the prompt all the time.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Load the folder with `load_skill_from_dir(Path(\"./skills/outage\"))` and pass the result to `SkillToolset(skills=[...])` in the agent's `tools`.",
+    "B": "Read `SKILL.md` when the agent starts and append its contents to the agent's `instruction`, so that the procedure is always available.",
+    "C": "Point an `McpToolset` with `stdio` connection parameters at the skill folder, so that its scripts are discovered as MCP tools.",
+    "D": "Create a sub-agent whose instruction is the text of `SKILL.md`, and attach it to the main agent through `AgentTool`."
+   },
+   "answer": "A",
+   "why": {
+    "A": "ADK loads a skill from its folder and exposes it through `SkillToolset`. The agent sees the metadata, loads the instructions when relevant, and pulls in resources on demand.",
+    "B": "The whole procedure sits in the prompt on every turn, which defeats progressive disclosure, and the scripts and references are not exposed.",
+    "C": "A skill folder is not an MCP server, so there is nothing for `McpToolset` to connect to.",
+    "D": "It adds a model call and a separate agent, loses progressive loading of resources, and does not give access to the scripts."
+   }
+  },
+  {
+   "id": "s15q5",
+   "scenario": 15,
+   "number": 5,
+   "header": "Domain 3 - Context Isolation and Model Tiering",
+   "domains": [
+    3
+   ],
+   "context": "A network-analytics root agent runs on Gemini Pro and talks to engineers. It has 25 telemetry MCP tools, and their raw results, often thousands of rows, fill its context. Costs are high, and answer quality drops in long sessions. The team wants the telemetry analysis done by a cheaper model while the Pro agent keeps handling the conversation.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep the 25 tools on the root agent and switch the root agent to Gemini Flash to lower the cost of each call.",
+    "B": "Apply `tool_filter` so that the root agent keeps only the five most-used telemetry tools and drops the rest.",
+    "C": "Move the 25 tools to a telemetry sub-agent that runs on Flash, wrap it in `AgentTool`, and attach it to the Pro root agent.",
+    "D": "Add a telemetry sub-agent on Flash to the root agent's `sub_agents`, so that the root agent can transfer telemetry questions to it."
+   },
+   "answer": "C",
+   "why": {
+    "C": "`AgentTool` runs the sub-agent in its own context and returns only its result. The raw telemetry stays out of the root agent's context, and each agent can use a different model.",
+    "A": "It lowers the cost of each call, but the context stays bloated and the quality of the engineer-facing conversation drops.",
+    "B": "It removes tools that engineers need, and the remaining tools' raw results still fill the root agent's context.",
+    "D": "A transfer hands the conversation to the Flash agent, so engineers end up talking to the cheaper model, and the tool output still lands in the shared session history."
+   }
+  },
+  {
+   "id": "s16q1",
+   "scenario": 16,
+   "number": 1,
+   "header": "Domain 3 - LLM-Driven Delegation",
+   "domains": [
+    3
+   ],
+   "context": "A streaming company's ADK coordinator delegates localization work to three sub-agents: `SubtitlingAgent`, `DubbingAgent`, and `ComplianceAgent`. Each sub-agent has a detailed `instruction`, but the subtitling and dubbing agents share the same `description`: \"Handles localization tasks.\" In testing, the coordinator often sends audio dubbing requests to `SubtitlingAgent`.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Add routing rules to the coordinator's instruction that list the keywords that should send a request to each sub-agent.",
+    "B": "Switch the coordinator to a larger model so that it can better infer which sub-agent fits each request.",
+    "C": "Rewrite each sub-agent's `description` to state specifically which tasks it handles and which it does not.",
+    "D": "Replace the coordinator with a `SequentialAgent` that runs all three sub-agents on every localization request."
+   },
+   "answer": "C",
+   "why": {
+    "C": "In LLM-driven delegation, the coordinator chooses a sub-agent based on the sub-agents' descriptions. Two identical descriptions give the model no way to tell the agents apart. Distinct, specific descriptions fix the cause.",
+    "A": "Keyword rules duplicate what the descriptions should say, miss requests phrased differently, and drift out of date as the sub-agents change.",
+    "B": "A larger model still sees two identical descriptions. The ambiguity is in the configuration, not in the model's ability.",
+    "D": "Running every sub-agent on every request wastes work and produces unwanted outputs. It removes the choice instead of fixing it."
+   }
+  },
+  {
+   "id": "s16q2",
+   "scenario": 16,
+   "number": 2,
+   "header": "Domain 3 - AgentTool vs. Transfer",
+   "domains": [
+    3
+   ],
+   "context": "In the middle of building a delivery plan, the coordinator needs a validation report from `FormatValidationAgent`, which uses 10 tools. It should then keep working on the plan in the same turn. `FormatValidationAgent` is currently one of the coordinator's `sub_agents`. After the transfer, the validation agent often answers the user directly, and the coordinator never finishes the plan.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Wrap `FormatValidationAgent` in an `AgentTool` so that the coordinator calls it, receives the report, and keeps control.",
+    "B": "Keep it as a sub-agent and add an instruction that tells it to transfer control back to the coordinator after it writes the report.",
+    "C": "Put the coordinator and the validation agent in a `SequentialAgent`, with validation always running before the coordinator starts.",
+    "D": "Give the 10 validation tools directly to the coordinator, so that it can run the validation itself without delegating."
+   },
+   "answer": "A",
+   "why": {
+    "A": "With `AgentTool`, the coordinator calls the sub-agent like a function. The sub-agent's tool calls stay in its own context, the report comes back as the tool result, and the coordinator continues its turn.",
+    "B": "Transferring back depends on the model following an instruction, and the validation agent's intermediate tool events still fill the shared conversation.",
+    "C": "Validation would run on every request, including ones that do not need it, and always at the start instead of at the point in the plan where it is needed.",
+    "D": "Ten more tool schemas and their outputs bloat the coordinator's context, which is the opposite of isolating the validation work."
+   }
+  },
+  {
+   "id": "s16q3",
+   "scenario": 16,
+   "number": 3,
+   "header": "Domain 3 - Deterministic Routing",
+   "domains": [
+    3
+   ],
+   "context": "The company wants to A/B test `SubtitleAgentV2` on 10% of sessions against the stable `SubtitleAgentV1`. Sessions for enterprise studios (`studio_tier == \"enterprise\"` in state) must always go to a dedicated high-capacity agent. If V2 fails before producing output, the request must fall back to V1. Routing must be deterministic and auditable, without an LLM call.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Use a coordinator `LlmAgent` with descriptions for each version and an instruction to send about one in ten requests to V2.",
+    "B": "Run V1 and V2 in a `ParallelAgent` for every request and keep whichever response a grading step scores higher.",
+    "C": "Write a custom `BaseAgent` whose `_run_async_impl` picks the target agent, and add retry logic that catches V2 failures.",
+    "D": "Use a `RoutedAgent` whose routing function checks the studio tier and a session hash for the 10% split, with V1 as the fallback."
+   },
+   "answer": "D",
+   "why": {
+    "D": "A routed agent runs a routing function in code to choose exactly one sub-agent per invocation, and it supports automatic fallback when the chosen agent fails before producing output. That makes routing deterministic, testable, and free of an LLM call.",
+    "A": "A model cannot reliably follow a traffic percentage, and LLM-based routing is neither deterministic nor free.",
+    "B": "Running both versions doubles cost on every request, and it is not an A/B test, because every user gets whichever output scores higher.",
+    "C": "It would work, but it rebuilds routing and fallback behavior that `RoutedAgent` already provides."
+   }
+  },
+  {
+   "id": "s16q4",
+   "scenario": 16,
+   "number": 4,
+   "header": "Domain 3 - Custom Non-LLM Agents",
+   "domains": [
+    3
+   ],
+   "context": "A `SequentialAgent` pipeline includes a step that computes file checksums and validates codec parameters with a Python library. Later steps read the results from session state. The step is currently an `LlmAgent` with a checksum tool, and the model sometimes skips the tool call or reformats the hash values. The step should not need a model at all.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep the `LlmAgent`, force the tool call through its tool configuration, and set the temperature to 0 to stop the reformatting.",
+    "B": "Subclass `BaseAgent`, override `_run_async_impl` to run the library code, and write the results to session state through its events.",
+    "C": "Move the checksum code into a `before_agent_callback` on the next LLM step, so that it runs just before that step starts.",
+    "D": "Wrap the step in a `LoopAgent` that re-runs it until the hash format passes validation, with `max_iterations` set to 3."
+   },
+   "answer": "B",
+   "why": {
+    "B": "A custom agent derived from `BaseAgent` runs plain Python logic within the ADK agent interface. It fits into the `SequentialAgent` like any other step, is deterministic, and costs no model calls.",
+    "A": "It still pays for a model call on a task that needs none, and the model can still change the output it passes on.",
+    "C": "It hides a pipeline step inside another agent's callback, which makes the step harder to trace, test, and reuse, and ties it to the next step.",
+    "D": "Retrying a non-deterministic step adds cost and latency without making the result reliable."
+   }
+  },
+  {
+   "id": "s16q5",
+   "scenario": 16,
+   "number": 5,
+   "header": "Domain 3 - Graph Workflows",
+   "domains": [
+    3
+   ],
+   "context": "The post-production pipeline is growing. A QA agent can send an asset back to dubbing or to subtitling depending on the issue it finds, rework can repeat up to three times before escalating to a human, and compliance checks are skipped for internal previews. The team has nested `SequentialAgent`, `LoopAgent`, and custom agents four levels deep, and nobody can follow the control flow anymore. The team uses ADK 2.0.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Model the pipeline as a graph workflow, with a node for each agent and conditional edges for rework paths, escalation, and skipping compliance.",
+    "B": "Keep the template agents and add a dedicated `LoopAgent` for each rework path, so that each loop is isolated in its own branch.",
+    "C": "Replace the pipeline with a single coordinator `LlmAgent` that decides the next step after each agent finishes its work.",
+    "D": "Replace the nested structure with one custom `BaseAgent` whose `_run_async_impl` implements all the branching with if/else logic."
+   },
+   "answer": "A",
+   "why": {
+    "A": "In ADK 2.0 and later, graph-based workflows replace template workflows for complex branching. Conditional edges and cycles express rework loops and skips directly, so the control flow is readable and deterministic.",
+    "B": "More nesting makes the problem worse. The control flow becomes even harder to follow and change.",
+    "C": "A production pipeline with fixed business rules should not depend on a model deciding the next step each time.",
+    "D": "It would work, but it hides the whole topology in custom code that is hard to visualize and test, which is the problem graph workflows solve."
+   }
+  },
+  {
+   "id": "s17q1",
+   "scenario": 17,
+   "number": 1,
+   "header": "Domain 3 - Choosing State Scopes",
+   "domains": [
+    3
+   ],
+   "context": "A private banking assistant built with ADK needs two new state values. `market_open` is updated by a scheduled job and must be read by every client session. `portfolio_id` records which portfolio the client is discussing in the current conversation. Clients often switch portfolios between conversations, so `portfolio_id` must not carry over into the next conversation, but it must survive across turns within one conversation.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which keys should you use?",
+   "options": {
+    "A": "`user:market_open` and `portfolio_id`",
+    "B": "`app:market_open` and `portfolio_id`",
+    "C": "`app:market_open` and `user:portfolio_id`",
+    "D": "`app:market_open` and `temp:portfolio_id`"
+   },
+   "answer": "B",
+   "why": {
+    "B": "The `app:` prefix is shared across all users and sessions, which fits a global flag written once by a job. A key with no prefix is session-scoped: it persists across turns and ends with the conversation.",
+    "A": "`user:` is scoped to each user, so the job would have to write the flag for every client separately.",
+    "C": "`user:` persists across all of a client's sessions, so the previous portfolio would carry into the next conversation.",
+    "D": "`temp:` is discarded at the end of each turn, so the portfolio would be forgotten after every response."
+   }
+  },
+  {
+   "id": "s17q2",
+   "scenario": 17,
+   "number": 2,
+   "header": "Domain 3 - Memory Bank vs. RAG Memory",
+   "domains": [
+    3
+   ],
+   "context": "The assistant should remember clients' goals, risk tolerance, and life events across years of conversations, which amounts to hundreds of facts per client. The prototype uses `VertexAiRagMemoryService` over raw transcripts. A client who moved from a conservative to an aggressive risk profile last month is still described as conservative, because older transcript chunks are retrieved alongside the new one.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep the RAG memory service, add dates to the stored chunks, and instruct the model to trust the most recent chunk when retrieved chunks conflict.",
+    "B": "Store the profile in `user:` state keys that the model updates on each turn, and include all of them in the prompt for every session.",
+    "C": "Increase the number of transcript chunks retrieved from RAG memory, so that the model sees the full history before it answers.",
+    "D": "Switch to `VertexAiMemoryBankService`, which extracts facts from sessions and consolidates them, updating existing memories when facts change."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Memory Bank extracts facts and consolidates them over time, so a new risk profile updates the existing memory instead of sitting next to a contradictory old transcript. It also supports similarity search over hundreds of facts.",
+    "A": "Conflict resolution still depends on the model's judgment at every answer, and the store keeps growing with stale, contradictory text.",
+    "B": "Hundreds of free-form facts in prompt state do not scale and cannot be searched, and model-written updates on every turn are unreliable.",
+    "C": "More raw history brings in more contradictions and more tokens."
+   }
+  },
+  {
+   "id": "s17q3",
+   "scenario": 17,
+   "number": 3,
+   "header": "Domain 3 - Memory Ingestion Methods",
+   "domains": [
+    3
+   ],
+   "context": "Compliance requires that a conversation be added to long-term memory only after it ends and the client has confirmed the closing summary. A developer currently has the agent write a short summary and store it with `add_memory`, but the summaries leave out facts that clients mentioned mid-conversation. Another developer proposes calling `add_events_to_memory` after every turn.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "When the confirmed session ends, call `add_session_to_memory` with the completed session so that the whole conversation is processed.",
+    "B": "Call `add_events_to_memory` after every turn with that turn's events, so that no fact is missed as the conversation goes on.",
+    "C": "Keep using `add_memory` but instruct the agent to write a longer and more detailed summary before the session closes.",
+    "D": "Call `search_memory` with the full transcript when the session ends, so that Memory Bank indexes the conversation."
+   },
+   "answer": "A",
+   "why": {
+    "A": "`add_session_to_memory` ingests the complete session, so fact extraction sees every turn. Calling it once the confirmed session ends meets the compliance rule.",
+    "B": "Ingesting after each turn adds content before the client has confirmed the summary, which breaks the compliance requirement.",
+    "C": "A model-written summary is still lossy. Direct fact injection bypasses Memory Bank's own extraction from the full conversation.",
+    "D": "`search_memory` queries stored memories. It does not add anything."
+   }
+  },
+  {
+   "id": "s17q4",
+   "scenario": 17,
+   "number": 4,
+   "header": "Domain 3 - Memory Isolation and Retention",
+   "domains": [
+    3
+   ],
+   "context": "The bank's compliance team sets three rules for the memory store. A client's memories must never be retrievable in another client's session. Memories must be deleted automatically after seven years. Auditors must be able to see how a memory changed over time.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Create a separate Memory Bank instance for each client and delete each instance seven years after the client's last conversation.",
+    "B": "Scope memories by `user_id`, run a Cloud Scheduler job that deletes old memories, and export every change to Cloud Logging for audits.",
+    "C": "Scope memories by `user_id`, set a seven-year TTL on memories, and use memory revision tracking to show auditors how each memory changed.",
+    "D": "Store memories under `app:` state keyed by client ID, with a timestamp on each entry, and filter out entries older than seven years."
+   },
+   "answer": "C",
+   "why": {
+    "C": "Memory Bank supports identity-isolated retrieval, TTL expiration, and revision tracking natively, which covers all three rules through configuration.",
+    "A": "One instance per client is a large operational burden and still does not meet the audit requirement.",
+    "B": "It rebuilds TTL and revision history with custom jobs and logs when both are built in.",
+    "D": "`app:` state is shared across all users, so every session could read every client's data."
+   }
+  },
+  {
+   "id": "s17q5",
+   "scenario": 17,
+   "number": 5,
+   "header": "Domain 3 - Production Session Storage",
+   "domains": [
+    3
+   ],
+   "context": "The assistant runs on Cloud Run and autoscales up to 200 instances. Clients report that it forgets which portfolio they were discussing partway through a conversation. The agent uses `InMemorySessionService`, and one engineer proposes turning on Cloud Run session affinity.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Enable Cloud Run session affinity so that each client's requests reach the same instance for the length of the conversation.",
+    "B": "Set the minimum number of instances equal to the maximum, so that instances are never scaled in and no session state is lost.",
+    "C": "Move the conversation values to `user:` prefixed keys so that they persist independently of the container that handles the request.",
+    "D": "Replace `InMemorySessionService` with an external session service, such as `DatabaseSessionService` on Cloud SQL or Agent Platform Sessions."
+   },
+   "answer": "D",
+   "why": {
+    "D": "An external session backend lets any instance load and update the session, so state survives scaling events and restarts.",
+    "A": "Affinity is best-effort. Sessions are still lost when an instance is scaled in, restarted, or overloaded.",
+    "B": "It is expensive and still leaves requests spread across 200 instances, each with its own separate memory.",
+    "C": "The prefix changes the scope of a value, not where it is stored. The values still live in the memory of one instance."
+   }
+  },
+  {
+   "id": "s18q1",
+   "scenario": 18,
+   "number": 1,
+   "header": "Domain 3 - User-Delegated vs. Agent Credentials",
+   "domains": [
+    3
+   ],
+   "context": "A hotel concierge agent updates each guest's own profile on an airline partner's SaaS platform, which supports OAuth 2.0. It also calls the hotel's property management API using the hotel's own API key. Security requires that no shared credential be used for guest accounts, and that neither raw tokens nor raw keys ever appear in the agent's prompt or state.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Use Auth Manager with 3-legged OAuth for the airline platform and a managed API key for the property management system.",
+    "B": "Store one airline partner API key in Secret Manager and pass each guest's loyalty number as a parameter when the agent updates that guest's profile.",
+    "C": "Implement the 3-legged OAuth flow in the agent's code and keep each guest's access and refresh tokens in `user:` state for later sessions.",
+    "D": "Use the agent's own Agent Identity to authenticate to the airline platform, and grant that identity access to every guest profile it may update."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Auth Manager brokers both kinds of authority: user-delegated OAuth for acting as the guest, and the agent's own API key for hotel systems. Credentials are stored encrypted and injected at the gateway, so the agent never handles them.",
+    "B": "A single partner key is exactly the shared credential that is prohibited, and access is not scoped to each guest's consent.",
+    "C": "The flow is right, but raw tokens in session state sit in the agent's memory, which breaks the rule.",
+    "D": "A third-party SaaS provider does not trust Google agent identities, and acting for guests requires their consent, not the agent's own authority."
+   }
+  },
+  {
+   "id": "s18q2",
+   "scenario": 18,
+   "number": 2,
+   "header": "Domain 3 - Governing Agent Assets",
+   "domains": [
+    3
+   ],
+   "context": "The hotel group now has about 40 agents, a dozen remote MCP servers, and many custom skills across its brands. Teams keep rebuilding things that already exist. Security wants outbound agent calls to reach only approved endpoints, and orchestrator agents should be able to discover which approved agents and tools are available.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Keep a YAML manifest of approved agents and endpoints in a shared Git repository, and validate it in CI before each deployment.",
+    "B": "Register the agents, MCP servers, and skills in Agent Registry, and let Agent Gateway check outbound calls against it.",
+    "C": "Publish every agent to Gemini Enterprise, so that approved agents appear in the agent gallery for teams and orchestrators to find.",
+    "D": "Give each agent an A2A agent card and have orchestrators read a maintained list of agent card URLs to discover what is available."
+   },
+   "answer": "B",
+   "why": {
+    "B": "Agent Registry is the central inventory of approved agents, MCP servers, tools, and skills. Agent Gateway enforces it at runtime by checking outbound calls against the registry.",
+    "A": "A manifest in Git documents intent, but nothing enforces it when an agent makes a call.",
+    "C": "The Gemini Enterprise gallery is for end users finding agents. It does not catalog MCP servers or skills, and it does not control outbound traffic.",
+    "D": "Agent cards describe an agent's capabilities, but a list of URLs gives neither central approval nor enforcement."
+   }
+  },
+  {
+   "id": "s18q3",
+   "scenario": 18,
+   "number": 3,
+   "header": "Domain 3 - Cross-Organization Agent Collaboration",
+   "domains": [
+    3
+   ],
+   "context": "The concierge agent is built with ADK. It must hand spa bookings to a booking agent owned by a partner company, built on a different framework, and hosted in the partner's own cloud. The concierge must discover what the partner agent can do and receive progress updates while the booking runs.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Wrap the partner's booking REST API as an OpenAPI tool in the concierge agent, and call it whenever a guest asks for a spa booking.",
+    "B": "Ask the partner to expose its booking agent as an MCP server, and connect the concierge agent to it through `McpToolset`.",
+    "C": "Import the partner's booking agent as one of the concierge agent's `sub_agents`, so that the concierge can transfer booking requests to it.",
+    "D": "Have the partner expose its agent through an A2A server with an agent card, and connect to it from the concierge with `RemoteA2aAgent`."
+   },
+   "answer": "D",
+   "why": {
+    "D": "A2A is designed for agents that work across organizations and frameworks. The agent card advertises capabilities, and the protocol supports streaming progress and task lifecycles.",
+    "A": "An API wrapper couples the concierge to endpoint details and gives neither capability discovery nor streamed progress from the agent.",
+    "B": "MCP connects agents to tools. It does not model a collaborating agent with its own task lifecycle and progress updates.",
+    "C": "Sub-agents must run in the same ADK application. A partner agent in another framework and cloud cannot be imported."
+   }
+  },
+  {
+   "id": "s18q4",
+   "scenario": 18,
+   "number": 4,
+   "header": "Domain 3 - Long-Running A2A Tasks",
+   "domains": [
+    3
+   ],
+   "context": "For yacht charters, the partner agent checks several vendors and can take up to 10 minutes to confirm. The concierge currently waits on a synchronous request with a 60-second timeout, and the request fails. A developer proposes raising every timeout on the path to 15 minutes.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Raise the HTTP client and load balancer timeouts to 15 minutes so that the synchronous call can finish.",
+    "B": "Have the partner build a status endpoint, and have the concierge poll it every 30 seconds through a custom tool.",
+    "C": "Use A2A's task lifecycle, so that the partner returns a task, streams status updates, and delivers the itinerary as an artifact.",
+    "D": "Run the charter request inside a `ParallelAgent`, so that the concierge can keep talking to the guest while it waits."
+   },
+   "answer": "C",
+   "why": {
+    "C": "A2A handles long-running operations natively. The caller gets a task it can follow, receives streamed updates, and collects the result as an artifact without holding a connection open.",
+    "A": "Long-held connections are fragile, give the guest no progress updates, and still fail if a charter takes longer than the new limit.",
+    "B": "It would work, but it rebuilds task tracking that the protocol already provides.",
+    "D": "Running concurrently does not change the timeout. The call to the partner still blocks and fails after 60 seconds."
+   }
+  },
+  {
+   "id": "s18q5",
+   "scenario": 18,
+   "number": 5,
+   "header": "Domain 5 - Human Confirmation for High-Risk Actions",
+   "domains": [
+    5
+   ],
+   "context": "The concierge agent can charge guests for upgrades. Policy requires explicit guest confirmation for any charge above $1,000 or any non-refundable charge. The control must hold even if a prompt injection hidden in a booking note manipulates the model. Smaller refundable charges should go through without an extra step.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Add a system instruction that tells the agent to always ask the guest for confirmation before any charge above $1,000 or any non-refundable charge.",
+    "B": "Use a `before_tool_callback` or policy engine that holds qualifying charge calls until the guest explicitly confirms them.",
+    "C": "Create a Model Armor input template with prompt injection detection set to `Inspect and block`, so that manipulated instructions never reach the model.",
+    "D": "Remove the charge tool from the agent and email the guest a payment link for every upgrade, so that the guest completes each charge."
+   },
+   "answer": "B",
+   "why": {
+    "B": "A callback or policy engine runs in code, outside the model, and checks every call to the charge tool. It enforces human confirmation exactly where policy requires it, whatever the model has been told.",
+    "A": "An instruction is exactly what a prompt injection can override.",
+    "C": "It lowers the risk of injection but does not guarantee it, and it does not enforce the confirmation rule itself.",
+    "D": "It adds friction to every charge, including small refundable ones that policy lets through."
+   }
+  },
+  {
+   "id": "s19q1",
+   "scenario": 19,
+   "number": 1,
+   "header": "Domain 3 - Layout-Aware Chunking",
+   "domains": [
+    3
+   ],
+   "context": "A mining company indexes 500,000 geological survey PDFs in RAG Engine. The reports contain drill-depth tables and multi-column text. With fixed-size chunking, tables are split across chunks, and answers mix rows from different drill holes because rows are separated from their headers. The team does not want to write custom parsing code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Increase the chunk size to 2,000 tokens so that most tables fit inside a single chunk along with their headers.",
+    "B": "Increase the chunk overlap to 50 percent so that rows near a boundary appear in both of the neighboring chunks.",
+    "C": "Convert the PDFs to plain text before ingestion to remove layout noise, and then chunk the text by paragraph.",
+    "D": "Use RAG Engine's layout parser so that chunks follow sections and keep tables with their headers."
+   },
+   "answer": "D",
+   "why": {
+    "D": "Layout-aware parsing detects headings, columns, and tables and chunks along those boundaries, so table rows stay with their headers without custom code.",
+    "A": "Large tables still split, and bigger chunks dilute relevance for every other query.",
+    "B": "Overlap duplicates content but does not reattach headers to rows far from them, and it inflates the index.",
+    "C": "Converting to plain text destroys the table structure that is causing the problem."
+   }
+  },
+  {
+   "id": "s19q2",
+   "scenario": 19,
+   "number": 2,
+   "header": "Domain 3 - Hybrid Search",
+   "domains": [
+    3
+   ],
+   "context": "Geologists search with exact drill-site codes such as `AU-2024-89B` and also with concepts such as \"gold mineralization in quartz veins.\" Many questions combine both, for example \"lithology at AU-2024-89B.\" Vector search misses the codes, and keyword search misses synonyms for rock types.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Move to a larger embedding model so that exact alphanumeric codes are represented more precisely in the vector space.",
+    "B": "Use keyword search with a synonym dictionary of rock types and minerals that the geology team maintains.",
+    "C": "Run keyword and vector search in parallel and merge the two result lists with Reciprocal Rank Fusion.",
+    "D": "Detect codes with a regular expression, send those queries to keyword search, and send all other queries to vector search."
+   },
+   "answer": "C",
+   "why": {
+    "C": "Hybrid search gets exact matching from keyword search and semantic matching from vector search on every query. Reciprocal Rank Fusion merges the two lists without having to calibrate their scores against each other.",
+    "A": "Embeddings capture meaning, not exact strings. A larger model does not reliably match specific codes.",
+    "B": "A manually maintained dictionary never covers all the semantic variation and becomes a permanent maintenance task.",
+    "D": "Queries that contain both a code and a concept need both kinds of search, but routing sends them to only one."
+   }
+  },
+  {
+   "id": "s19q3",
+   "scenario": 19,
+   "number": 3,
+   "header": "Domain 3 - Reranking Before Synthesis",
+   "domains": [
+    3
+   ],
+   "context": "Hybrid search returns 50 passages. Sending all 50 to the model raises latency and cost, and answers overlook relevant passages in the middle of the list. When the team keeps only the top 5 by fused rank, the most relevant passage is sometimes lost, because it was ranked 12th.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Send all 50 passages to the model, sorted by fused rank, so that the strongest candidates appear first in the prompt.",
+    "B": "Score the 50 passages against the query with the ranking API and pass only the top 5 reranked passages to the model.",
+    "C": "Summarize each of the 50 passages with a smaller model and send the 50 summaries to the main model instead of the originals.",
+    "D": "Tune the Reciprocal Rank Fusion constant so that passages with strong keyword matches move higher in the fused list."
+   },
+   "answer": "B",
+   "why": {
+    "B": "A reranker scores each passage directly against the query, which is more precise than rank fusion. It can move the 12th passage into the top 5, so a small, high-quality context reaches the model.",
+    "A": "Cost and latency stay the same, and the lost-in-the-middle problem remains.",
+    "C": "It adds 50 model calls and loses the exact figures and details that geological answers depend on.",
+    "D": "Fusion only combines rankings. Adjusting it does not add a real measure of relevance to the query."
+   }
+  },
+  {
+   "id": "s19q4",
+   "scenario": 19,
+   "number": 4,
+   "header": "Domain 4 - Measuring Groundedness",
+   "domains": [
+    4
+   ],
+   "context": "Users report answers that include mineral concentration figures that appear nowhere in the retrieved sources. The team's evaluation suite compares answers with reference answers using ROUGE, and it still scores well. The team needs an automated metric that catches this failure before release.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Add a groundedness autorater that checks whether each claim in the answer is supported by the retrieved context.",
+    "B": "Add more reference answers to the golden dataset and raise the minimum ROUGE score required for release.",
+    "C": "Add tool trajectory precision and recall metrics to verify that the retrieval tool is called for each question.",
+    "D": "Add a response relevance metric that checks whether each answer addresses the geologist's question."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Groundedness measures whether the output is supported by the tool context, which is exactly the failure of invented figures that are not in the sources.",
+    "B": "ROUGE measures word overlap. An answer can overlap heavily with a reference and still contain an invented number.",
+    "C": "Trajectory metrics check which tools were called, not whether the answer stays faithful to what came back.",
+    "D": "An answer can be highly relevant to the question and still contain invented figures."
+   }
+  },
+  {
+   "id": "s19q5",
+   "scenario": 19,
+   "number": 5,
+   "header": "Domain 4 - Finding Evaluation Regressions",
+   "domains": [
+    4
+   ],
+   "context": "The team changed the chunk size from 500 to 200 tokens and re-ran the evaluation suite. Average groundedness barely moved, from 4.3 to 4.2, but users say some kinds of questions are now answered worse. The team has `results_v1.json` from before the change and `results_v2.json` from after, and wants to see exactly which cases got worse.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Run `agents-cli eval analyze` on `results_v2.json` to group the failing cases in the new run into clusters.",
+    "B": "Add more cases to the golden dataset and re-run `agents-cli eval run` to get a more stable average score.",
+    "C": "Inspect Cloud Trace spans for production requests made after the change to find slow or failing retrievals.",
+    "D": "Run `agents-cli eval compare` with `results_v1.json` as the baseline and `results_v2.json` as the candidate."
+   },
+   "answer": "D",
+   "why": {
+    "D": "`eval compare` compares a baseline and a candidate run side by side for each case, showing exactly where scores dropped even when the average hides it.",
+    "A": "`analyze` groups failures within a single run. It does not show what changed relative to the baseline.",
+    "B": "A larger average still hides regressions for each case.",
+    "C": "Traces show latency and errors in execution, not answer quality compared against the evaluation baseline."
+   }
+  },
+  {
+   "id": "s20q1",
+   "scenario": 20,
+   "number": 1,
+   "header": "Domain 4 - Selecting a Deployment Target",
+   "domains": [
+    4
+   ],
+   "context": "A payments company is deploying a fraud-scoring agent. It must run inference on an accelerator type that the serverless platforms do not offer, include a sidecar container that connects to a legacy mainframe, and run a compliance agent as a DaemonSet on every node. The platform team already operates Kubernetes clusters with custom node pools.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "Which deployment target should you choose?",
+   "options": {
+    "A": "Agent Runtime, using `agents-cli deploy -d agent_runtime`.",
+    "B": "GKE, using `agents-cli deploy -d gke`.",
+    "C": "Cloud Run, using `agents-cli deploy -d cloud_run`.",
+    "D": "A Compute Engine managed instance group running the agent in a container."
+   },
+   "answer": "B",
+   "why": {
+    "B": "GKE provides node-level control, including choice of accelerators, custom node pools, and DaemonSets, alongside multi-container pods, and it fits the team's existing Kubernetes operations.",
+    "A": "Agent Runtime is fully managed and does not expose nodes, accelerators, or sidecars.",
+    "C": "Cloud Run supports sidecars but does not offer node-level control, DaemonSets, or the required accelerator type.",
+    "D": "It is not a CLI deployment target, and it means rebuilding orchestration, scaling, and rollout on raw VMs."
+   }
+  },
+  {
+   "id": "s20q2",
+   "scenario": 20,
+   "number": 2,
+   "header": "Domain 4 - Private Egress per Runtime",
+   "domains": [
+    4
+   ],
+   "context": "A reconciliation agent runs on Agent Runtime, and a notifications agent runs on Cloud Run. Both must reach a private-IP Cloud SQL instance in the company's VPC, and none of their traffic may cross the public internet.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Use a Private Service Connect interface for Agent Runtime and Direct VPC egress for the Cloud Run service.",
+    "B": "Use Direct VPC egress for Agent Runtime and a Private Service Connect interface for the Cloud Run service.",
+    "C": "Create a Serverless VPC Access connector and attach it to both the Agent Runtime and the Cloud Run deployments.",
+    "D": "Give Cloud SQL a public IP, restrict its authorized networks, and connect both agents with the Cloud SQL connector."
+   },
+   "answer": "A",
+   "why": {
+    "A": "Agent Runtime reaches a customer VPC through a Private Service Connect interface attached to a subnet. Cloud Run routes outbound traffic into the VPC with Direct VPC egress.",
+    "B": "It swaps the two mechanisms. Each one belongs to the other runtime.",
+    "C": "Serverless VPC Access connectors are a Cloud Run and Cloud Run functions option. Agent Runtime uses Private Service Connect interfaces.",
+    "D": "The database would have a public endpoint, and traffic would leave the private network, which the requirement rules out."
+   }
+  },
+  {
+   "id": "s20q3",
+   "scenario": 20,
+   "number": 3,
+   "header": "Domain 4 - Token Cost Analytics",
+   "domains": [
+    4
+   ],
+   "context": "The finance team needs token cost broken down by agent and customer segment, queryable in SQL, with 13 months of history. Engineers currently export Cloud Trace data by hand each month and join it in spreadsheets. The team wants a solution with minimal custom code.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Build Cloud Monitoring dashboards on the agents' token-usage metrics, grouped by agent name and segment label.",
+    "B": "Add structured logging of token counts to each tool and model call, and route the logs to BigQuery with a log sink.",
+    "C": "Enable the BigQuery Agent Analytics plugin on the ADK agents to stream conversation and token telemetry into BigQuery.",
+    "D": "Set trace sampling to 100 percent and use Trace Explorer queries to break down token usage by agent and segment."
+   },
+   "answer": "C",
+   "why": {
+    "C": "The plugin streams prompts, responses, token usage, and session metadata into BigQuery with no custom logging code, so finance can query it in SQL with long retention.",
+    "A": "Dashboards are not SQL-queryable data for joins with finance data, and metric retention and labeling are limited.",
+    "B": "It would work, but it adds custom logging code to every agent, which the plugin already replaces.",
+    "D": "Traces are for debugging executions, not long-term cost reporting, and 100 percent sampling is expensive."
+   }
+  },
+  {
+   "id": "s20q4",
+   "scenario": 20,
+   "number": 4,
+   "header": "Domain 4 - Automated Prompt Optimization",
+   "domains": [
+    4
+   ],
+   "context": "A reconciliation agent fails 30 percent of the multi-currency cases in its golden dataset. Engineers have spent two weeks hand-editing the system instruction with little progress. The team wants an automated, metric-driven way to improve the instruction against the existing dataset, without changing the model.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you do?",
+   "options": {
+    "A": "Run `agents-cli eval analyze` to cluster the failing cases, then keep hand-editing the instruction with those clusters in mind.",
+    "B": "Fine-tune the model on the golden dataset so that it learns the multi-currency rules directly from the reference cases.",
+    "C": "Add every failing golden case to the system instruction as a few-shot example so that the agent learns the expected answers.",
+    "D": "Run `agents-cli eval optimize` with the golden dataset and the target metric to refine the system instruction iteratively."
+   },
+   "answer": "D",
+   "why": {
+    "D": "`eval optimize` uses the GEPA optimizer to rewrite the instruction repeatedly against the dataset and target metric, replacing manual trial and error.",
+    "A": "It is a good diagnostic step, but the improvement is still manual.",
+    "B": "It changes the model, which is out of scope, costs far more, and trains on the evaluation data.",
+    "C": "Putting the test cases into the prompt overfits to the evaluation set, so the scores stop being meaningful."
+   }
+  },
+  {
+   "id": "s20q5",
+   "scenario": 20,
+   "number": 5,
+   "header": "Domain 4 - Canary Release Signals",
+   "domains": [
+    4
+   ],
+   "context": "Version 2 of the reconciliation agent is receiving 10 percent of traffic as a canary. Latency and error-rate dashboards look the same as for v1, and the product lead wants to move to 100 percent today.",
+   "goal": "",
+   "constraints": [],
+   "prompt": "What should you check before promoting v2?",
+   "options": {
+    "A": "Latency and error rates, plus token spend per request, since together these fully describe the service's objectives.",
+    "B": "Business outcomes, application telemetry, and user feedback, each compared between v1 and v2 over the canary period.",
+    "C": "Re-run the offline evaluation suite on v2 and promote it if its score is equal to or higher than v1's score.",
+    "D": "Raise v2 to 50 percent for a day and promote it if latency and error rates stay flat at the larger share."
+   },
+   "answer": "B",
+   "why": {
+    "B": "Agent releases are judged along three dimensions: business results (for example, settlement completion and escalations), telemetry (latency, errors, and tokens), and user feedback. An agent can be fast and error-free and still give worse answers.",
+    "A": "Telemetry alone misses the outcome and user signals that show whether v2's reasoning got worse.",
+    "C": "Offline evaluation was already a pre-release gate. The canary exists to measure behavior on live traffic.",
+    "D": "It exposes more users to v2 while looking at the same incomplete metrics."
    }
   }
  ]

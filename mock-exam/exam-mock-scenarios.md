@@ -121,3 +121,113 @@ Each scenario includes a realistic **Context/Setup**, **Goal**, critical **Const
   * User input prompts must be inspected inline for prompt injection (handling short inputs appropriately), and model outputs must be sanitized for PII before leaving the platform perimeter.
 * **Primary Exam Domains:** **Domain 5** (Agent Gateway Ingress/Egress, Model Armor, Agent Registry, VPC Service Controls).
 
+
+---
+
+### **Scenario 11: Renewable Energy Field Technician Assistant**
+* **Context/Setup:** A renewable energy company operates wind and solar farms in several regions. Its operations team is building low-code assistants: a technician assistant in Agent Designer that helps field crews troubleshoot turbines and inverters from technical manuals, and a public chat for residential solar customers.
+* **Goal:** Deliver assistants that stay in scope, follow safety procedures, and return predictable output, configured entirely in the console.
+* **Constraints:**
+  * The team has conversation designers but no developers, so everything must be configured in the console.
+  * Diagnostic answers must never skip electrical isolation checks.
+  * Alert extractions must be machine-readable by the maintenance ticketing system.
+* **Primary Exam Domains:** **Domain 1** (System Instructions, Few-Shot Prompting, Chain-of-Thought, Dynamic Parameter Templating, Low-Code Platform Selection).
+
+---
+
+### **Scenario 12: Aviation Maintenance Assistant on Conversational Agents**
+* **Context/Setup:** A commercial airline is building a voice and chat assistant for hangar technicians in Conversational Agents (Dialogflow CX) with Agent Search data stores. It covers engine, avionics, and cabin maintenance procedures, inventory lookups, and decades of scanned logs, photos, and wiring diagrams.
+* **Goal:** Deliver a deterministic, auditable maintenance assistant that several teams can build in parallel and that can answer from multimodal records.
+* **Constraints:**
+  * Maintenance procedures must follow a fixed, auditable sequence of steps.
+  * Technicians work in noisy hangars, so silence, garbled speech, and backend failures must be handled gracefully.
+  * The team wants to retire its custom OCR and text-parsing code.
+* **Primary Exam Domains:** **Domain 1** (Flows, Intent vs. Condition Routes, Event Handlers, Multimodal Ingestion, Form Parameters).
+
+---
+
+### **Scenario 13: Clinical Trial Team Adopting Agents CLI**
+* **Context/Setup:** A pharmaceutical company's software team is standardizing how it builds ADK agents for clinical-trial operations. Developers use AI coding assistants, and the team is adopting `agents-cli` for scaffolding, local testing, and deployment.
+* **Goal:** Go from a quick local prototype to a Cloud Run deployment with CI/CD without losing work or guessing at conventions.
+* **Constraints:**
+  * The deployment target is undecided at the start, and cloud infrastructure requires a security review.
+  * Custom agent code must be preserved as the project matures.
+  * CI needs a fast smoke test in addition to the full evaluation suite.
+* **Primary Exam Domains:** **Domain 2** (Injected Skills, Prototype Scaffolding, Scaffold Enhance, Playground vs. Run, Project Manifest).
+
+---
+
+### **Scenario 14: Automotive Manufacturer Exposing Systems via MCP**
+* **Context/Setup:** An automotive manufacturer is connecting plant-floor databases, ERP systems, and its own ADK agents to coding assistants and production agents through the Model Context Protocol.
+* **Goal:** Provide secure, shared, least-privilege MCP access to enterprise systems for both local development and production agents.
+* **Constraints:**
+  * Production MCP servers must run privately in the VPC, scale independently, and authenticate with IAM.
+  * No secrets may appear in container images or repositories.
+  * Shared MCP servers are owned by other teams and cannot be modified for a single consumer.
+* **Primary Exam Domains:** **Domain 2** (MCP Transports, MCP Toolbox for Databases, Secret Manager, tool_filter, to_mcp_server).
+
+---
+
+### **Scenario 15: Telecom Network Analytics with Agent Skills and Data Agent Kit**
+* **Context/Setup:** A telecom provider's data team uses coding assistants and ADK agents to analyze 5G and fiber network telemetry in BigQuery and dbt. It maintains a growing library of custom Agent Skills for network analysis procedures.
+* **Goal:** Keep context small and costs low while giving assistants and agents the procedures, tools, and data access they need.
+* **Constraints:**
+  * The library of skills is large and still growing.
+  * Analysts work in their IDE and do not want to paste schemas by hand.
+  * The engineer-facing agent must stay on a high-quality model while telemetry work runs on a cheaper one.
+* **Primary Exam Domains:** **Domain 2** (Skill Levels, Skill Folder Structure, Data Agent Kit) & **Domain 3** (SkillToolset, AgentTool Model Tiering).
+
+---
+
+### **Scenario 16: Media Localization with Dynamic ADK Orchestration**
+* **Context/Setup:** A global streaming company localizes video assets through subtitling, dubbing, format validation, and compliance review. It orchestrates specialized ADK agents in a post-production pipeline.
+* **Goal:** Route work to the right agent reliably, keep contexts isolated, and keep a growing pipeline understandable.
+* **Constraints:**
+  * Experiments and customer-tier routing must be deterministic and auditable.
+  * Non-AI processing steps should not incur model calls.
+  * The pipeline includes rework loops and conditional skips.
+* **Primary Exam Domains:** **Domain 3** (LLM Delegation, AgentTool vs. Transfer, RoutedAgent, Custom BaseAgent, Graph Workflows).
+
+---
+
+### **Scenario 17: Private Banking Assistant with State and Long-Term Memory**
+* **Context/Setup:** A wealth management firm is building an ADK advisory assistant on Cloud Run that tracks conversations in progress and remembers each client's goals and risk profile across years of sessions.
+* **Goal:** Scope state correctly, keep long-term memory accurate as facts change, and meet regulatory retention and isolation rules.
+* **Constraints:**
+  * One client's data must never be retrievable in another client's session.
+  * Memories must be retained for no more than seven years and must be auditable.
+  * The service autoscales to hundreds of instances.
+* **Primary Exam Domains:** **Domain 3** (State Prefixes, Memory Bank vs. RAG Memory, Memory Ingestion APIs, TTL and Revisions, Session Backends).
+
+---
+
+### **Scenario 18: Hotel Concierge Agents Acting on Guests' Behalf**
+* **Context/Setup:** A hotel group runs concierge agents that update guests' partner loyalty profiles, book services through partner agents, and charge guests for upgrades. Dozens of agents, MCP servers, and skills are spread across its brands.
+* **Goal:** Act for guests with the right authority, collaborate with partner agents securely, and govern what exists and what can be called.
+* **Constraints:**
+  * No shared credentials for guest accounts, and no raw secrets in agent prompts or state.
+  * Partner agents are built on other frameworks and hosted in other clouds.
+  * High-value or non-refundable charges require explicit guest confirmation.
+* **Primary Exam Domains:** **Domain 3** (Auth Manager, Agent Registry, A2A Protocol, Long-Running Tasks) & **Domain 5** (Human-in-the-Loop Guardrails).
+
+---
+
+### **Scenario 19: Mining Exploration Assistant with RAG over a Large Corpus**
+* **Context/Setup:** A mining company is building a research assistant over 500,000 geological survey reports, drill logs, and site maps, using RAG Engine and ADK.
+* **Goal:** Retrieve precise, well-grounded context for both code-based and conceptual queries, and catch quality regressions before release.
+* **Constraints:**
+  * Reports contain complex tables and multi-column layouts.
+  * Queries mix exact site codes with natural-language concepts.
+  * Every retrieval change must be evaluated against a baseline.
+* **Primary Exam Domains:** **Domain 3** (Layout Parsing, Hybrid Search with RRF, Reranking) & **Domain 4** (Groundedness Evaluation, Eval Compare).
+
+---
+
+### **Scenario 20: FinTech Settlement Agents in Production**
+* **Context/Setup:** A payments company runs settlement, reconciliation, and fraud-scoring agents across GKE, Agent Runtime, and Cloud Run, all connected to private databases in its VPC.
+* **Goal:** Choose the right runtime for each workload, keep traffic private, control costs, and release new versions safely.
+* **Constraints:**
+  * No agent traffic to internal databases may cross the public internet.
+  * Finance needs SQL-queryable cost data with long retention.
+  * Releases must be gated on more than latency and errors.
+* **Primary Exam Domains:** **Domain 4** (Deployment Targets, Private Egress, BigQuery Agent Analytics, Eval Optimize, Canary Metrics).

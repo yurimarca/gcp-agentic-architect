@@ -10,13 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-
-  <!-- Firebase Reserved URLs (auto-initialized by Firebase Hosting) -->
-  <script defer src="/__/firebase/12.8.0/firebase-app-compat.js"></script>
-  <script defer src="/__/firebase/12.8.0/firebase-auth-compat.js"></script>
-  <script defer src="/__/firebase/12.8.0/firebase-firestore-compat.js"></script>
-  <script defer src="/__/firebase/12.8.0/firebase-app-check-compat.js"></script>
-  <script defer src="/__/firebase/init.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -60,8 +53,8 @@
         <aside class="home-side">
           <h2 class="section-title">Domain weights</h2>
           <div class="card" id="domain-weights"></div>
-          <h2 class="section-title">Leaderboard <span class="muted">· full exam</span></h2>
-          <div class="card" id="home-leaderboard"><p class="muted">Loading…</p></div>
+          <h2 class="section-title">Your progress <span class="muted">· this device only</span></h2>
+          <div class="card" id="my-progress"></div>
           <h2 class="section-title">Your recent attempts</h2>
           <div class="card" id="history"></div>
         </aside>
@@ -140,7 +133,6 @@
   <script src="questions.js"></script>
   <script src="diagrams.js"></script>
   <script src="audio/manifest.js"></script>
-  <script src="leaderboard.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

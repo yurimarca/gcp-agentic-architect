@@ -1,137 +1,111 @@
-Here are **5 realistic, scenario-based multiple-choice exam questions** built directly on **Scenario 8 (Enterprise Observability & Non-Deterministic Reasoning Debugging)**, focusing on OpenTelemetry (OTel) instrumentation, Cloud Trace span hierarchies, BigQuery telemetry analytics, and diagnosing reasoning failures.
+Five scenario-based questions for **Scenario 8 (Enterprise Observability & Non-Deterministic Reasoning Debugging)**.
 
 ---
 
-### **Question 1 (Domain 4 - OpenTelemetry Span Hierarchies in Cloud Trace)**
+### **Question 1 (Domain 4 - Distributed Tracing Across Services)**
 
-**Context:** A SaaS enterprise operates a multi-agent system built with the Agent Development Kit (ADK). Support engineers report that complex user requests occasionally take over 30 seconds to complete. The engineering team needs to trace request execution to identify whether latency is caused by LLM model generation time, database tool execution, or network serialization.
+A SaaS company's ADK agent sometimes takes more than 30 seconds to answer. The agent calls an MCP server on Cloud Run, which queries AlloyDB. Current logs show only each request's total duration. Engineers need to see, for a single slow request, how long each model call took, how long each tool call took, and whether a slow tool call was spent in the MCP server's database queries or somewhere else.
 
-**Goal:** Instrument the application to visualize nested execution steps in Google Cloud Trace.
+**What should you do?**
 
-**Constraints:**
-* Must wrap each overall user interaction turn as a **root/parent span**.
-* Must capture individual LLM prompt/response generations and tool API invocations as **nested child spans** under the active turn.
+* **A.** Enable OpenTelemetry tracing in the agent with the Cloud Trace exporter, so that each turn, model call and tool call is recorded as a nested span in one trace.
+* **B.** Add structured JSON log entries with timing fields at the start and end of each model and tool call in the agent and the MCP server, and build log-based latency metrics.
+* **C.** Enable OpenTelemetry tracing with the Cloud Trace exporter in both the agent and the MCP server, and propagate the trace context in the headers of the agent's MCP requests.
+* **D.** Enable Cloud Profiler on the agent and the MCP server, and compare CPU and wall-time profiles of slow periods with profiles of normal periods to find the bottleneck.
 
-**Which instrumentation approach should you implement?**
+---
 
-* **A.** Instrument the ADK runtime with an **OpenTelemetry (OTel) TracerProvider** exporting to Google Cloud Trace, wrapping user turns in parent spans and tool/model invocations in child spans.
-* **B.** Print `console.log()` statements to stdout and search raw string logs in Cloud Logging using basic text filters.
-* **C.** Configure Model Armor in `Inspect and block` mode to capture request duration headers.
-* **D.** Store raw execution timestamps in the `user:` state namespace in ADK.
+#### **Answer & Explanation**
+* **Correct Answer: C**
+  * **Why it's correct:** Nested OTel spans show where time goes within a turn. Propagating trace context to the MCP server extends the same trace into the server, so its database spans appear under the agent's tool span.
+  * **Why Distractor A fails:** It shows each tool call's total duration from the agent's side, but not what happened inside the MCP server, which the engineers explicitly need.
+  * **Why Distractor B fails:** Separate log entries have no parent-child relationship, so reconstructing the path of one request across services is manual and unreliable.
+  * **Why Distractor D fails:** Profiles aggregate CPU and wall time across many requests. They do not show the sequence of calls within one specific slow request.
+
+---
+
+### **Question 2 (Domain 4 - Token Cost Analytics)**
+
+The finance team wants to calculate cost per session and per agent, and track token-usage trends over the past 13 months, using SQL. The platform team does not want to change any tool code. The agents already send traces to Cloud Trace.
+
+**What should you do?**
+
+* **A.** Enable ADK's BigQuery Agent Analytics plugin, so that agent events, including model token counts and session IDs, are streamed into BigQuery tables for SQL analysis.
+* **B.** Query token counts from the span attributes in Cloud Trace, and give the finance team access to the Trace explorer to filter and aggregate spans by session and agent.
+* **C.** Record token counts as Cloud Monitoring custom metrics labeled with session ID and agent name, and build dashboards that show cost per session and per agent.
+* **D.** Add a step to each tool that inserts the current model's token counts, the session ID and the agent name into a Cloud SQL table after the tool finishes running.
 
 ---
 
 #### **Answer & Explanation**
 * **Correct Answer: A**
-  * **Why it's correct:** OpenTelemetry (OTel) provides standardized distributed tracing. By configuring an OTel TracerProvider exporting to Google Cloud Trace, the agent runtime automatically wraps the overall user turn in a **parent span** and nests individual LLM calls, tool executions, and sub-agent invocations as **child spans**. This visualizes exact execution duration and bottlenecks across non-deterministic reasoning loops.
-  * **Why Distractor B fails:** Unstructured `console.log()` stdout messages produce isolated log entries without parent-child correlation, making it impossible to reconstruct nested execution timelines or trace multi-step reasoning cascades.
-  * **Why Distractor C fails:** Model Armor is an inline content-sanitization and security policy engine; it does not generate application-level OpenTelemetry trace spans or measure internal tool execution latencies.
-  * **Why Distractor D fails:** Storing execution timestamps in `user:` state pollutes long-term user session history across turns and does not integrate with Cloud Trace observability dashboards.
+  * **Why it's correct:** The plugin streams agent telemetry into BigQuery without changing tool code. BigQuery supports long retention and ad hoc SQL, which is what finance needs.
+  * **Why Distractor B fails:** Cloud Trace keeps data for about 30 days and is not a SQL analytics tool, so 13-month trends are impossible.
+  * **Why Distractor C fails:** Session ID labels create very high-cardinality metrics, and Monitoring does not support ad hoc SQL analysis.
+  * **Why Distractor D fails:** It requires changing every tool and records token counts in the wrong place, because model calls happen outside tools.
 
 ---
 
-### **Question 2 (Domain 4 - BigQuery Telemetry Streaming for Token Cost Analytics)**
+### **Question 3 (Domain 4 - Diagnosing a Tool Cascade)**
 
-**Context:** Finance and operations teams need to track token consumption, cost trends, and model latency across 100,000 daily user sessions. They require a centralized analytics environment to run SQL queries, calculate cost per user session, and detect token-heavy prompt regressions.
+Users sometimes wait about 45 seconds and then receive "I encountered an issue processing your request." Cloud Trace shows that during those turns, a single `LlmAgent` called `search_knowledge_base` 20 times with nearly identical arguments. Each call returned an empty list. The agent is not part of any workflow agent.
 
-**Goal:** Stream agent execution telemetry, prompt/response token counts, and session metadata into a scalable analytics data warehouse.
+**What should you do?**
 
-**Constraints:**
-* Must continuously stream telemetry **without modifying core agent business logic** or adding custom database write steps inside tool code.
-* Must enable running ad-hoc SQL analytical queries over historical conversation telemetry.
-
-**Which architecture should you deploy?**
-
-* **A.** Enable automated **BigQuery Agent Analytics streaming** (via Cloud Logging log sinks or the ADK BigQuery Telemetry plugin) to stream prompt/response token metadata directly into BigQuery tables.
-* **B.** Write custom Python code inside every tool function that executes `INSERT INTO` statements against a Cloud SQL instance.
-* **C.** Store full prompt/response payloads in local container `/tmp/` text files and download them manually via SSH.
-* **D.** Save token counts into the `temp:` state namespace in ADK.
+* **A.** Wrap the agent in a `LoopAgent` with `max_iterations=3`, so that the agent's reasoning loop stops after three attempts and returns whatever it has found by then.
+* **B.** Increase the timeout of the `search_knowledge_base` tool, so that slow searches can complete and return results instead of returning an empty list to the model.
+* **C.** Set the model's temperature to 0 so that its behavior is deterministic, which prevents it from exploring many slightly different variations of the same search.
+* **D.** Change the tool to return an explicit "no results found" message that suggests a next step, and cap model calls per invocation with `max_llm_calls` in `RunConfig`.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Streaming agent telemetry directly into **BigQuery** (using ADK observability plugins or Cloud Logging export sinks) continuously captures prompt/response metadata, input/output token counts, model latency, and session IDs into structured BigQuery tables. This allows data teams to run ad-hoc SQL cost analytics without modifying core agent tool code or impacting runtime performance.
-  * **Why Distractor B fails:** Adding synchronous database `INSERT` statements inside every tool function introduces execution latency, tightly couples business logic to database infrastructure, and increases connection pool overhead.
-  * **Why Distractor C fails:** Local container `/tmp/` files are ephemeral and deleted when serverless containers scale down, leading to severe telemetry data loss.
-  * **Why Distractor D fails:** `temp:` state is discarded immediately at the end of the turn and does not persist or export data to an external data warehouse for SQL analytics.
+* **Correct Answer: D**
+  * **Why it's correct:** The model keeps retrying because an empty list gives it no guidance, which is a tool cascade. A clear result message breaks the pattern, and `max_llm_calls` caps any cascade that still happens.
+  * **Why Distractor A fails:** `LoopAgent` repeats its sub-agents' entire runs. It does not limit the tool calls the model makes within one run, and it could repeat the whole cascade three times.
+  * **Why Distractor B fails:** The calls returned quickly with empty results; they did not time out, so a longer timeout changes nothing.
+  * **Why Distractor C fails:** A deterministic model repeats the same unproductive choice, often with identical arguments, so the cascade continues.
 
 ---
 
-### **Question 3 (Domain 4 - Diagnosing Infinite Tool Cascades)**
+### **Question 4 (Domain 4 & Domain 5 - Sensitive Data in Telemetry)**
 
-**Context:** End users report that an AI agent occasionally hangs for 45 seconds before returning a generic polite response: *"I encountered an issue processing your request."* Upon inspecting Cloud Trace, engineers observe a single user turn containing 20 identical, repeating child spans for `Search_Knowledge_Base`.
+A security review finds that Cloud Trace spans from the support agent contain the full text of prompts and model responses, including customers' names, addresses and account details. Engineers still need traces that show span timing, errors, tool names and token counts to debug production issues. Only a few engineers should ever see conversation content.
 
-**Goal:** Identify the architectural root cause and apply the correct agent framework fix.
+**What should you do?**
 
-**Constraints:**
-* Must prevent the agent from entering infinite tool-invocation cascades when a tool returns empty or unexpected search results.
-* Must enforce a hard limit on repetitive tool execution cycles at the agent level.
-
-**Which root cause diagnosis and remedy should you select?**
-
-* **A.** **Root Cause:** The agent entered an infinite tool cascade loop because the LLM kept re-triggering the same search tool after receiving empty outputs. **Remedy:** Configure `max_iterations` on the agent loop, update tool docstrings to handle empty result states, or implement an explicit callback/escalation handler.
-* **B.** **Root Cause:** Cloud Trace caused a deadlock in the VPC network. **Remedy:** Disable OpenTelemetry tracing in the production environment.
-* **C.** **Root Cause:** The user's prompt contained a prompt injection. **Remedy:** Deploy Model Armor in `Inspect only` mode.
-* **D.** **Root Cause:** The `user:` state namespace ran out of memory. **Remedy:** Clear all user preferences in Firestore.
+* **A.** Restrict the Cloud Trace User role to a small group of senior engineers, and leave the tracing configuration unchanged so that no diagnostic detail is lost.
+* **B.** Configure the agent's tracing to stop recording prompt and response content in span attributes, while keeping timing, status, tool names and token counts.
+* **C.** Disable tracing in production, and reproduce customer issues in staging, where the prompts come from test data that contains no personal information.
+* **D.** Apply a Model Armor output template with Sensitive Data Protection de-identification to model responses, so that personal information is masked before it is recorded.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** An **infinite tool cascade** occurs when an LLM receives an unexpected or empty tool output and repeatedly attempts to call the same tool without reaching a termination condition. Cloud Trace exposes this via repeated child spans under a single parent turn span. The fix requires setting hard iteration caps (`max_iterations`), refining tool docstrings so the model understands empty output states, or raising an explicit escalation event (`EventActions(escalate=True)`).
-  * **Why Distractor B fails:** Cloud Trace is a passive telemetry collector; it does not create VPC network deadlocks or cause application-level LLM reasoning loops.
-  * **Why Distractor C fails:** Repeating search calls on empty data is a reasoning logic bug, not a prompt injection; `Inspect only` mode in Model Armor does not limit tool execution loops.
-  * **Why Distractor D fails:** Memory in state namespaces does not dictate LLM function-calling loop logic.
+* **Correct Answer: B**
+  * **Why it's correct:** Content capture is a separate choice from span recording. Turning it off removes customer data from traces while keeping everything engineers need for debugging. The few people allowed to see conversation content can use a separately controlled store.
+  * **Why Distractor A fails:** The personal data is still collected and stored in traces. Limiting who can view it does not address the finding that it is stored there at all.
+  * **Why Distractor C fails:** Many production issues cannot be reproduced in staging, so engineers lose their main debugging tool.
+  * **Why Distractor D fails:** It masks model outputs only. Customers' own prompts, which contain the same details, are still recorded in full.
 
 ---
 
-### **Question 4 (Domain 4 - OpenTelemetry Auto-Instrumentation Setup)**
+### **Question 5 (Domain 4 - Silent Tool Failures)**
 
-**Context:** An engineering team is deploying an ADK agent using `agents-cli`. They want to ensure that all model calls, tool executions, and sub-agent delegates automatically generate standard OpenTelemetry (OTel) traces without manually writing `tracer.start_span()` boilerplates around every line of Python code.
+A banking agent told a customer, "Your transfer of $500 is complete," but no money moved. The trace shows the `execute_transfer` span with status OK. Its code shows that the tool catches every exception from the payments API and returns the string "Transfer submitted." In this case, the payments API had returned HTTP 500.
 
-**Goal:** Configure auto-instrumentation for the agent application.
+**What should you do?**
 
-**Which configuration approach should you implement?**
-
-* **A.** Register the **`google-agents-cli-observability`** skill / OTel plugin in the agent configuration (`app/agent.py`), initializing the OpenTelemetry SDK with the Google Cloud Trace exporter.
-* **B.** Manually wrap every Python function with custom `try...except...finally` blocks that post raw JSON metrics to a Pub/Sub topic.
-* **C.** Import `Dialogflow CX` SDKs into the Python project and invoke `detect_intent()` inside every tool callback.
-* **D.** Set `OTEL_SDK_DISABLED=true` in the local `.env` file.
-
----
-
-#### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** ADK and `agents-cli` provide built-in observability plugins (`google-agents-cli-observability`). Initializing the OpenTelemetry SDK with the Google Cloud Trace exporter automatically hooks into ADK's execution lifecycle, generating nested spans for all model calls, tool executions, and agent delegations without writing manual `tracer.start_span()` code.
-  * **Why Distractor B fails:** Writing manual try/except blocks and Pub/Sub posting functions requires massive boilerplate code and fails to produce standardized OpenTelemetry context propagation across spans.
-  * **Why Distractor C fails:** Importing Dialogflow CX SDKs into a custom ADK Python agent adds unnecessary dependencies and does not instrument Python code with OTel traces.
-  * **Why Distractor D fails:** Setting `OTEL_SDK_DISABLED=true` completely disables OpenTelemetry tracing.
-
----
-
-### **Question 5 (Domain 4 - Diagnosing Silent Tool Failures)**
-
-**Context:** A banking customer complains that an account management agent told them *"Your transfer of \$500 was completed successfully,"* but no funds were actually transferred. Upon inspecting Cloud Trace, engineers see that the child span for `Execute_Fund_Transfer` returned an HTTP 500 error, but the agent's final text generation ignored the error status and assured the user the task succeeded.
-
-**Goal:** Detect silent failures and ensure the agent correctly handles tool execution exceptions.
-
-**Constraints:**
-* The observability trace must record backend tool exceptions using OTel span status codes (`STATUS_ERROR`) and exception event attributes.
-* The agent's prompt instructions and callbacks must force the agent to report failures accurately to the user rather than halluncinating success.
-
-**Which diagnostic finding and remediation should you report?**
-
-* **A.** **Finding:** The tool span caught the backend exception but swallowed the error string without raising an exception or returning a structured error dictionary to the LLM. **Remedy:** Ensure tools return structured error representations (or raise exceptions captured by `before_tool_callback` / `after_tool_callback`), set the OTel span status to `STATUS_ERROR`, and instruct the model to report errors accurately.
-* **B.** **Finding:** Cloud Trace altered the response payload sent to the LLM. **Remedy:** Disable Cloud Trace in production.
-* **C.** **Finding:** Model Armor blocked the HTTP 500 error string. **Remedy:** Switch Model Armor to `Inspect only` mode.
-* **D.** **Finding:** The `temp:` state namespace stored the funds permanently. **Remedy:** Migrate `temp:` state to BigQuery.
+* **A.** Add to the agent's instruction: "Never tell the customer a transfer is complete unless the tool explicitly confirms that the transfer succeeded," and add this case to the evaluation dataset.
+* **B.** Create a Cloud Monitoring alert on HTTP 500 responses from the payments API, so that the operations team can contact affected customers soon after a failure occurs.
+* **C.** Make the tool return a structured error with the failure reason when the payments API fails, and record the exception on the tool's span with an error status.
+* **D.** Make the tool retry the payments API up to three times when it fails, and return "Transfer submitted" only after one of the attempts has succeeded.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** A **silent tool failure** occurs when a backend tool encounters an exception (like an HTTP 500 error) but swallows it, returning a generic success string to the LLM. To resolve this, tool functions must record the exception on the active OpenTelemetry span (setting status to `STATUS_ERROR`) and pass a clear error object to the LLM (or trigger callbacks) so the model accurately reports the failure to the user.
-  * **Why Distractor B fails:** Cloud Trace is a passive telemetry observer; it never alters application payloads or modifies messages sent to the LLM.
-  * **Why Distractor C fails:** Model Armor inspects user prompts and model responses for safety/injection risks; it does not block internal HTTP 500 backend API status codes.
-  * **Why Distractor D fails:** The `temp:` state namespace is in-memory scratchpad storage; it cannot execute bank transfers or store funds.
+* **Correct Answer: C**
+  * **Why it's correct:** The tool hides the failure from both the model and the traces. Returning a structured error lets the model tell the customer the truth, and setting the span's error status makes these failures visible and possible to alert on.
+  * **Why Distractor A fails:** The tool returns "Transfer submitted", which reads as success, so the model follows its instruction and still reports success.
+  * **Why Distractor B fails:** It detects the problem after the customer has already been told something false, and the tool's traces still show success.
+  * **Why Distractor D fails:** Retrying a payment that is not idempotent can move money twice, and when all attempts fail, the failure still needs to be reported correctly.

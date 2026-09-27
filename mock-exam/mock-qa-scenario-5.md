@@ -1,137 +1,111 @@
-Here are **5 realistic, scenario-based multiple-choice exam questions** built directly on **Scenario 5 (Cross-Organization Logistics Agent Collaboration - A2A)**.
+Five scenario-based questions for **Scenario 5 (Cross-Organization Logistics Agent Collaboration - A2A)**.
 
 ---
 
-### **Question 1 (Domain 3 - Interoperability Protocols & Multi-Agent Architecture)**
+### **Question 1 (Domain 3 - Choosing an Interoperability Pattern)**
 
-**Context:** A multinational logistics enterprise operates a North America Logistics Agent built in Python and an independent Europe Logistics Agent built in Java by a separate regional subsidiary. The North America agent needs to delegate international shipment queries to the Europe agent across network boundaries. The interaction requires passing reasoning thought traces, handling 45-second long-running clearance tasks, and returning binary customs PDF file artifacts.
+A logistics company's North America agent, built with ADK in Python and running on Agent Runtime, needs to hand international shipment questions to the Europe agent. The Europe agent is written in Java, runs in a subsidiary's own Google Cloud project, and is released on the subsidiary's own schedule. It reasons over several steps, sometimes asks the caller clarifying questions, and returns customs PDFs. One engineer suggests exposing the Europe agent's customs functions as an MCP server.
 
-**Goal:** Select the multi-agent design pattern and protocol that meets all functional requirements without consolidating both agents into a single codebase.
+**What should you do?**
 
-**Which architecture should you recommend?**
+* **A.** Expose the Europe agent's customs functions through an MCP server on Cloud Run, and connect the North America agent to it with `McpToolset` over Streamable HTTP.
+* **B.** Ask the subsidiary to port the Europe agent to Python ADK, and add it to the North America agent's `sub_agents` so that the two share one deployment.
+* **C.** Have the Europe agent publish an agent card and serve the Agent2Agent (A2A) protocol, and have the North America agent consume it through `RemoteA2aAgent`.
+* **D.** Wrap the Europe agent's REST endpoint in a custom Python function tool on the North America agent that posts the question and returns the response text.
 
-* **A.** Expose the Europe Agent as an **`A2AServer`** and consume it in the North America Agent using a **`RemoteA2aAgent`** client proxy via the **Agent2Agent (A2A) protocol**.
-* **B.** Refactor the Europe Agent code into Python and import it directly as a local `SequentialAgent` sub-agent running in the same application memory process.
-* **C.** Wrap the Europe Agent inside a local `stdio` MCP server using `McpToolset`.
-* **D.** Deploy a Dialogflow CX Generator and pass customs PDFs through session parameters.
+---
+
+#### **Answer & Explanation**
+* **Correct Answer: C**
+  * **Why it's correct:** A2A is designed for independent agents that collaborate across projects, languages and release cycles. It supports multi-turn exchanges, long-running tasks and file artifacts, and the Europe agent keeps its own autonomy and codebase.
+  * **Why Distractor A fails:** MCP exposes tools, which are single stateless function calls. The Europe agent's own reasoning, clarifying questions and task lifecycle are lost.
+  * **Why Distractor B fails:** It removes the subsidiary's independence in language, project and release schedule, which the scenario requires to be kept.
+  * **Why Distractor D fails:** A plain REST wrapper has no protocol for tasks, streaming status, clarifying turns or artifacts, so each of these has to be custom-built.
+
+---
+
+### **Question 2 (Domain 3 & Domain 5 - Least-Privilege Access for A2A)**
+
+The North America agent runs on Agent Runtime with its own agent identity. It must discover the Europe agent in Agent Registry and then send it messages. The Europe agent is deployed on Agent Runtime in the subsidiary's project, which also contains about 20 other agents that the North America agent must not call. Your security team requires least privilege.
+
+**What IAM configuration should you apply?**
+
+* **A.** Grant the North America agent's principal `roles/agentregistry.viewer` on the registry, and `roles/aiplatform.user` on the Europe agent's reasoning engine resource only.
+* **B.** Grant the North America agent's principal `roles/agentregistry.viewer` on the registry, and `roles/aiplatform.user` on the subsidiary's project.
+* **C.** Grant the service account used by the CI/CD pipeline that deploys the North America agent `roles/agentregistry.viewer` and `roles/aiplatform.user` on the Europe agent's resource.
+* **D.** Grant the North America agent's principal `roles/agentregistry.admin` on the registry, and `roles/aiplatform.user` on the Europe agent's reasoning engine resource only.
 
 ---
 
 #### **Answer & Explanation**
 * **Correct Answer: A**
-  * **Why it's correct:** The **Agent2Agent (A2A) protocol** is designed specifically for independent agents running as separate microservices across network boundaries, organizational teams, or programming languages (e.g., Python and Java). In ADK, exposing the Europe agent as an `A2AServer` and consuming it via `RemoteA2aAgent` natively supports preserving reasoning traces, tracking long-running tools without timeouts, and transferring file artifacts (customs PDFs).
-  * **Why Distractor B fails:** Local sub-agents run in the same application memory process. Force-refactoring a Java microservice into a single Python monolith violates team independence, cross-language support, and modularity.
-  * **Why Distractor C fails:** Standard I/O (`stdio`) MCP servers execute as local machine subprocesses and cannot connect to remote cloud services over cross-project networks.
-  * **Why Distractor D fails:** Dialogflow CX session parameters are intended for short conversational text slots; they cannot transfer raw binary PDF file artifacts or handle cross-framework A2A reasoning traces.
+  * **Why it's correct:** The calling agent's identity is the principal that needs access. It needs to read the registry to discover the Europe agent and to invoke only that one reasoning engine. Granting at resource level keeps the other 20 agents out of reach.
+  * **Why Distractor B fails:** A project-level `aiplatform.user` grant allows the North America agent to call every agent in the subsidiary's project.
+  * **Why Distractor C fails:** The deployment pipeline's service account is not the identity the running agent uses, so the agent would still be denied.
+  * **Why Distractor D fails:** The admin role allows registry entries to be changed, which is far more than discovery needs.
 
 ---
 
-### **Question 2 (Domain 3 & Domain 5 - IAM Delegation for A2A Communication)**
+### **Question 3 (Domain 5 - Governing Outbound Agent Traffic)**
 
-**Context:** The North America Logistics Agent uses a SPIFFE-based Agent Identity (`identity_type=AGENT_IDENTITY`) deployed on Agent Runtime. It needs to discover and send messages to the Europe Logistics Agent registered in **Agent Registry** across project boundaries.
+The North America agent calls the Europe agent and an external carrier-tracking API. Security requires that the agent can reach only approved destinations, that every call is authorized against the agent's own identity, and that outbound payloads are inspected for sensitive data. New destinations must be approved centrally rather than by editing network configuration for each agent.
 
-**Goal:** Grant the minimum required IAM permissions to allow the North America Agent to discover and invoke the Europe Agent.
+**What should you do?**
 
-**Constraints:**
-* Must adhere to the principle of least privilege.
-* Permissions must be granted directly to the parent agent's **SPIFFE principal identity**, not to human developer user accounts.
-
-**Which IAM role configuration should you apply?**
-
-* **A.** Grant **`roles/agentregistry.viewer`** on the Agent Registry resource and **`roles/aiplatform.user`** on the target Europe agent's reasoning engine resource directly to the North America Agent's SPIFFE principal string.
-* **B.** Grant `roles/owner` on the Google Cloud Organization to the human developer who deployed the North America agent.
-* **C.** Generate a long-lived Service Account JSON key, embed it in the North America agent's `.env` file, and pass it in HTTP headers.
-* **D.** Configure a Model Armor template in `Inspect only` mode on the Europe agent's project.
+* **A.** Create VPC firewall egress rules with FQDN objects that allow only the Europe agent's endpoint and the carrier API's hostname, and deny all other egress from the agent's subnet.
+* **B.** Route the agent's outbound traffic through Secure Web Proxy with a URL list that contains the Europe agent's endpoint and the carrier API, and log all requests.
+* **C.** Rely on the Europe agent's IAM check to reject unauthorized callers, and store the carrier API key in Secret Manager so that only the North America agent can read it.
+* **D.** Route the agent's outbound traffic through Agent Gateway in Agent-to-Anywhere mode, register both destinations in Agent Registry, and attach a Model Armor template to inspect payloads.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** When initiating A2A communication, the invoking parent agent acts as the principal. To discover the remote agent, the parent agent's SPIFFE principal string (`principal://agents.global.org-...`) requires `roles/agentregistry.viewer` on the registry. To send messages to the sub-agent, it requires `roles/aiplatform.user` on the target sub-agent's reasoning engine resource.
-  * **Why Distractor B fails:** Granting `roles/owner` to a human developer violates least privilege and does not grant the automated agent runtime process the necessary permissions.
-  * **Why Distractor C fails:** Agent identities eliminate long-lived service account JSON keys. Storing raw service account keys in `.env` files violates enterprise security controls.
-  * **Why Distractor D fails:** `Inspect only` mode in Model Armor logs findings without granting IAM invocation permissions.
+* **Correct Answer: D**
+  * **Why it's correct:** In egress mode, Agent Gateway intercepts the agent's outbound calls, checks the agent's identity against IAM, allows only destinations registered in Agent Registry (default deny), and applies Model Armor inspection. Approving a new destination means registering it in Agent Registry, not changing network rules.
+  * **Why Distractor A fails:** Firewall rules filter by address or hostname only. They have no concept of the calling agent's identity, do not inspect payloads, and must be edited for each new destination.
+  * **Why Distractor B fails:** Secure Web Proxy filters URLs, but it does not authorize calls per agent identity, does not use the central agent catalog, and does not apply Model Armor inspection.
+  * **Why Distractor C fails:** It protects the Europe agent's side, but nothing limits where the North America agent can send traffic, and no payloads are inspected.
 
 ---
 
-### **Question 3 (Domain 5 - Agent Gateway Egress & Network Governance)**
+### **Question 4 (Domain 3 - Long-Running Tasks & Artifacts)**
 
-**Context:** Enterprise security rules dictate that all outbound A2A network calls originating from the North America Agent targeting external agents or APIs must be intercepted, validated against approved destinations, and inspected for sensitive data leaks.
+The North America agent currently calls the Europe agent through a custom tool that sends a synchronous HTTP POST and waits for the response. A customs inspection can take up to 4 minutes, and the calls fail when the client times out after 60 seconds. The Europe agent's final output is a customs PDF. A teammate proposes raising all timeouts to 10 minutes.
 
-**Goal:** Configure centralized network governance for outbound agent traffic.
+**What should you do?**
 
-**Constraints:**
-* Must enforce a strict **default-deny** posture for all outbound connections.
-* Essential Google Cloud platform APIs required by the agent runtime must be explicitly allowlisted to prevent execution failures.
-
-**Which configuration sequence should you deploy?**
-
-* **A.** Bind the agent to an **Agent Gateway operating in Agent-to-Anywhere (egress) mode**, register the Europe Agent endpoint in **Agent Registry**, and allowlist essential platform endpoints (e.g., `aiplatform.googleapis.com`, `logging.googleapis.com`) in the registry.
-* **B.** Attach a Client-to-Agent (ingress) gateway to the North America Agent and disable mTLS certificate verification.
-* **C.** Deploy a Cloud NAT gateway in the VPC network and grant `roles/run.invoker` to all users in the organization.
-* **D.** Write a custom Python callback using `after_agent_callback` to intercept raw TCP network socket packets.
+* **A.** Raise the tool's HTTP client timeout and the Europe service's request timeout to 10 minutes, and return the PDF base64-encoded in the JSON response body.
+* **B.** Switch to A2A: the Europe agent returns a task immediately, sends status updates while the inspection runs, and delivers the PDF as an artifact when the task is complete.
+* **C.** Have the Europe agent write the PDF to a shared Cloud Storage bucket when it finishes, and have the North America agent's tool check the bucket every 10 seconds until the file appears.
+* **D.** Split the request into two tools: one that starts the inspection and returns immediately, and one that the model calls repeatedly until the inspection result is returned as text.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** **Agent Gateway in Agent-to-Anywhere (egress) mode** intercepts outbound agent communications. It enforces IAM access policies, verifies target endpoints in **Agent Registry**, and applies Model Armor filters. Because Agent Gateway enforces a strict *default deny* posture, essential platform APIs (such as `aiplatform.googleapis.com`, `logging.googleapis.com`, `secretmanager.googleapis.com`) must be allowlisted in Agent Registry to avoid runtime 498 initialization errors.
-  * **Why Distractor B fails:** Client-to-Agent (ingress) mode governs incoming client requests to the agent, not outbound agent-to-agent calls. Disabling mTLS breaks Context-Aware Access security baselines.
-  * **Why Distractor C fails:** Cloud NAT provides basic outbound IP translation; it cannot perform A2A protocol parsing, Agent Registry validation, or Model Armor payload inspection.
-  * **Why Distractor D fails:** Python application callbacks operate inside the LLM runtime code; they cannot replace network-layer gateway enforcement or manage VPC egress security.
+* **Correct Answer: B**
+  * **Why it's correct:** A2A is task-based. Long-running work is tracked through task status updates instead of an open HTTP request, and binary outputs are returned as artifacts. This is the built-in way to handle both requirements.
+  * **Why Distractor A fails:** It works until an inspection takes longer than the new limit. It also keeps connections open for minutes, which proxies and load balancers may cut, and it inflates the response with a base64 PDF.
+  * **Why Distractor C fails:** It works, but it is a custom coordination mechanism that needs cross-project bucket permissions and polling, reimplementing what A2A already provides.
+  * **Why Distractor D fails:** Having the model poll wastes calls and tokens, and returning the inspection result as text still does not deliver the PDF.
 
 ---
 
-### **Question 4 (Domain 3 - Artifacts & Long-Running Tool Operations in A2A)**
+### **Question 5 (Domain 3 & Domain 5 - Agent Identity Lifecycle)**
 
-**Context:** When the North America Agent invokes the Europe Agent to inspect an international container, the Europe Agent executes an asynchronous tool that scans customs databases and generates a PDF report. The operation takes 50 seconds to complete.
+During an infrastructure upgrade, the subsidiary deleted the Europe agent and re-created it in the same project and region, with the same code and display name. Since then, the Europe agent receives `403 PERMISSION_DENIED` when it reads the customs-rules bucket. The bucket's IAM policy still shows a binding for the Europe agent's principal from before the upgrade.
 
-**Goal:** Ensure the A2A interaction completes successfully without incurring HTTP connection timeouts or losing the generated PDF.
+**What should you do?**
 
-**Constraints:**
-* Must use built-in A2A protocol capabilities supported by ADK.
-* Must pass the binary PDF report back to the calling agent as a structured artifact.
-
-**Which mechanism does the A2A protocol use to satisfy these requirements?**
-
-* **A.** A2A natively supports **long-running tools** by tracking asynchronous task status updates across streaming messages and uses **A2A Artifacts** to transmit binary files between agents.
-* **B.** A2A converts binary PDF files into raw text strings inside system prompts and forces synchronous 5-second HTTP REST timeouts.
-* **C.** The calling agent must save the PDF to a local container `/tmp/` folder and share the local file path string over a gRPC header.
-* **D.** The sub-agent stores the PDF in a Dialogflow CX Custom Entity table.
+* **A.** Wait up to seven minutes for IAM changes to propagate after the redeployment, and retry the request before changing any permissions on the bucket.
+* **B.** Restart the Europe agent so that Agent Runtime provisions a fresh X.509 certificate for its identity, which re-establishes the existing bucket binding.
+* **C.** Read the re-created agent's effective identity from its deployment, and grant the bucket role to that principal, replacing the binding for the old one.
+* **D.** Redeploy the agent again, this time with the original display name set explicitly in the configuration, so that its SPIFFE identity matches the existing binding.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** The ADK **A2A protocol integration** explicitly supports three core capabilities: (1) preserving reasoning/thought traces, (2) tracking **long-running tools** via task status updates to prevent HTTP timeouts, and (3) passing **binary file artifacts** (like generated PDFs) between independent agents over the network.
-  * **Why Distractor B fails:** Embedding binary PDFs as raw text in system prompts consumes massive context tokens and causes prompt corruption. Standard synchronous REST calls would time out after 50 seconds.
-  * **Why Distractor C fails:** Local container `/tmp/` paths are ephemeral and local to the Europe agent's container; they are completely unreachable by a remote agent running in a separate project across network boundaries.
-  * **Why Distractor D fails:** Dialogflow CX custom entities are designed for intent parameter extraction, not for storing or transferring binary PDF artifacts across ADK A2A agents.
-
----
-
-### **Question 5 (Domain 3 & Domain 5 - SPIFFE Identity Lifecycle Management)**
-
-**Context:** Due to an infrastructure upgrade, the Europe Logistics Agent reasoning engine instance is deleted and re-deployed in the same project and region with identical source code, system instructions, and display name.
-
-**Goal:** Maintain security and access control for the newly deployed Europe Agent instance.
-
-**Constraints:**
-* Must understand how Google Cloud manages SPIFFE identity lifecycle and IAM bindings upon re-deployment.
-* Must restore cross-project A2A invocation access for the North America Agent.
-
-**Which action must the cloud security architect perform?**
-
-* **A.** Query the new agent's **`spec.effectiveIdentity`** SPIFFE principal identifier and apply the required IAM allow policies to the new principal, because re-deploying an agent generates a new resource ID and a new SPIFFE principal string.
-* **B.** Do nothing, because SPIFFE IDs are bound to the agent's display name and automatically inherit all previous IAM bindings.
-* **C.** Manually extract the deleted agent's X.509 certificate from Secret Manager and import it into the new container image.
-* **D.** Change the agent's identity type to a shared legacy service account and disable mTLS Context-Aware Access.
-
----
-
-#### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** An agent's SPIFFE principal identifier includes its unique underlying resource ID (e.g., `.../reasoningEngines/NEW_AGENT_ID`). When an agent is deleted and re-deployed—even with identical code and display names—it receives a **new resource ID and a new SPIFFE principal identifier**. Deleting the old agent leaves its IAM bindings inactive. Architects must retrieve the new `spec.effectiveIdentity` string and grant the required IAM roles to the new principal.
-  * **Why Distractor B fails:** SPIFFE IDs are derived from immutable resource URIs, not display names. Old IAM bindings remain as inactive grants and do not automatically transfer to the new resource ID.
-  * **Why Distractor C fails:** X.509 certificates are automatically provisioned and managed by Google Cloud with 24-hour validity periods; manually copying expired certificates is unsupported and breaks mTLS binding.
-  * **Why Distractor D fails:** Downgrading to shared service accounts violates least privilege access, increases blast radius, and disables default Context-Aware Access security baselines.
+* **Correct Answer: C**
+  * **Why it's correct:** An agent's SPIFFE identity includes its resource ID. A re-created agent gets a new ID and a new principal, so bindings for the old principal no longer apply. The fix is to grant roles to the new principal, or to use a project-scoped `principalSet` binding so that future re-creations do not break access.
+  * **Why Distractor A fails:** Nothing was changed in IAM, so there is nothing to propagate. The binding is for a principal that no longer exists.
+  * **Why Distractor B fails:** Certificates are provisioned and rotated automatically, and a new certificate does not change which principal the identity represents.
+  * **Why Distractor D fails:** The display name is not part of the SPIFFE ID, so redeploying with any name produces yet another new principal.

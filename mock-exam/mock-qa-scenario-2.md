@@ -1,144 +1,111 @@
-Here are **5 realistic, scenario-based multiple-choice exam questions** built directly on **Scenario 2 (Developer Assistant with Model Context Protocol - MCP)**.
+Five scenario-based questions for **Scenario 2 (Developer Assistant with Model Context Protocol - MCP)**.
 
 ---
 
-### **Question 1 (Domain 2 & Domain 3)**
+### **Question 1 (Domain 2 & Domain 3 - Remote MCP Transport)**
 
-**Context:** An engineering organization is deploying containerized Model Context Protocol (MCP) servers on Cloud Run to expose schema inspection and SQL execution tools across 16 PostgreSQL and AlloyDB instances. Software developers use the Agent Development Kit (ADK) inside VS Code and Antigravity IDEs to build internal coding assistants that connect to these tools.
+Your platform team runs a shared MCP Toolbox for Databases server on Cloud Run. It holds the connection pools and Secret Manager credentials for 16 PostgreSQL and AlloyDB instances, and the service requires authentication. Developers built an ADK agent that works on their laptops, where `McpToolset` launches the Toolbox binary locally over `stdio`. After the agent was deployed to Agent Runtime, every tool call fails. Security requires that database credentials stay only in the shared server and that every tool call is attributable to the calling agent's identity.
 
-**Goal:** Configure the local and cloud-deployed ADK agents to securely invoke tools hosted on the remote Cloud Run MCP server.
+**What should you do?**
 
-**Constraints:**
-* Must use a standardized transport layer that operates over network HTTP/HTTPS connections.
-* Must support passing IAM Bearer authentication tokens and allow stateless autoscaling on Cloud Run.
-* Must avoid relying on local subprocess pipes or Standard I/O (`stdio`) redirections for remote database access.
+* **A.** Add the Toolbox binary and its configuration to the agent's deployment package so the `stdio` connection works the same way in Agent Runtime as it does on developer laptops.
+* **B.** Configure `McpToolset` with `StreamableHTTPConnectionParams` pointing to the Cloud Run service URL, pass an identity token for the agent in the authorization header, and grant the agent's identity permission to invoke the service.
+* **C.** Allow unauthenticated invocations on the Cloud Run service, restrict its ingress to internal traffic, and connect to it from the agent with `StreamableHTTPConnectionParams`.
+* **D.** Configure `McpToolset` with `StreamableHTTPConnectionParams` pointing to the Cloud Run service URL, and pass each database's user name and password in request headers so the server can open connections on the agent's behalf.
 
-**Which configuration should you recommend?**
+---
 
-* **A.** Instantiate `McpToolset` in ADK using `StreamableHTTPConnectionParams` (or SSE transport), providing the Cloud Run service URL and passing authorization token headers.
-* **B.** Instantiate `McpToolset` in ADK using Standard I/O (`stdio`) transport params referencing a local `npx @modelcontextprotocol/server-postgres` process.
-* **C.** Embed the database credentials and full connection strings directly into system prompt instructions using model context caching.
-* **D.** Export the database tables into static CSV files and create a Dialogflow CX Unstructured Data Store.
+#### **Answer & Explanation**
+* **Correct Answer: B**
+  * **Why it's correct:** Remote MCP servers are reached over Streamable HTTP (or SSE), not `stdio`. Sending the agent's identity token lets Cloud Run authenticate the caller with IAM, so each call is attributable to the agent, and credentials stay in the shared server.
+  * **Why Distractor A fails:** Bundling the binary would give every agent instance its own copy of the database credentials and its own connection pools, which is exactly what the shared server is meant to prevent.
+  * **Why Distractor C fails:** Internal ingress limits where traffic comes from, but unauthenticated access removes IAM identity, so calls are no longer attributable to a specific agent.
+  * **Why Distractor D fails:** Sending credentials from the agent moves the secrets into the agent, which violates the requirement that they stay in the shared server.
+
+---
+
+### **Question 2 (Domain 2 - Tool Schema Bloat)**
+
+A shared MCP Toolbox server exposes 40 tools to several teams, including schema inspection, SQL formatting, read queries, and `execute_sql`. Your reporting agent needs only three read-only tools. Evaluation runs show that the agent sometimes chooses the wrong tool and, twice, called `execute_sql` to run an `UPDATE`. Token usage per turn is also high because every tool schema is sent to the model. The platform team does not want to run another server.
+
+**What should you do?**
+
+* **A.** Add to the agent's system instruction the names of the three tools it is allowed to use, and state that it must never run statements that modify data.
+* **B.** Enable context caching for the agent's system instruction and tool declarations, so the 40 tool schemas are cached and not billed as new input tokens on every turn.
+* **C.** Switch the agent to a model with a larger context window so that all 40 tool schemas fit with room to spare and do not crowd out the conversation.
+* **D.** Set `tool_filter` on the agent's `McpToolset` to the three read-only tools it needs, so that only those schemas are loaded and only those tools can be called.
+
+---
+
+#### **Answer & Explanation**
+* **Correct Answer: D**
+  * **Why it's correct:** `tool_filter` limits which of the server's tools the agent loads. The model sees only three schemas, which cuts tokens and reduces tool-selection mistakes, and `execute_sql` cannot be called at all. It needs no new infrastructure.
+  * **Why Distractor A fails:** The model still sees all 40 schemas, so token usage is unchanged, and an instruction does not prevent it from calling `execute_sql`.
+  * **Why Distractor B fails:** Caching reduces cost, but the model still chooses from 40 tools, so the wrong-tool and write problems remain.
+  * **Why Distractor C fails:** Tool-selection accuracy and write safety are not caused by a lack of space; a larger window keeps all the same problems and costs more.
+
+---
+
+### **Question 3 (Domain 2 & Domain 3 - Isolating Sub-Agent Context)**
+
+Your analyst assistant uses a Gemini Pro root agent for conversation. SQL exploration is delegated to a sub-agent through `sub_agents`, so the root transfers control to it. The SQL work involves many attempts, error messages, and large result sets. After a few questions, the session holds hundreds of thousands of tokens and answer quality drops. You also want the SQL work to run on Gemini Flash to reduce cost. The root agent needs only the final findings from each exploration.
+
+**What should you do?**
+
+* **A.** Wrap the SQL agent in an `AgentTool` on the root agent and configure it with Gemini Flash, so that only its final answer is returned to the root.
+* **B.** Keep the SQL agent in `sub_agents` but configure it with Gemini Flash, so that the expensive exploration runs on the cheaper model while control transfers back and forth as before.
+* **C.** Move the SQL tools onto the root agent and have them write raw query results to `temp:` state keys, so the results are discarded at the end of each turn.
+* **D.** Switch the root agent to a model with a larger context window and enable context caching, so the growing session history fits and costs less per turn.
 
 ---
 
 #### **Answer & Explanation**
 * **Correct Answer: A**
-  * **Why it's correct:** For remote MCP servers deployed on cloud infrastructure (like Cloud Run or GKE), the Model Context Protocol uses **Streamable HTTP / Server-Sent Events (SSE)**. In ADK, configuring `McpToolset` with `StreamableHTTPConnectionParams` allows the agent to establish an HTTPS connection, pass authorization headers (e.g., Bearer tokens / IAM), and interact statelessly with the containerized MCP server.
-  * **Why Distractor B fails:** Standard I/O (`stdio`) transport is strictly designed for local subprocess execution on the developer's machine; it cannot establish remote network connections to Cloud Run endpoints.
-  * **Why Distractor C fails:** Hardcoding database credentials in system prompts exposes raw secrets in prompt memory, violates security best practices, and does not provide programmatic API connection capabilities.
-  * **Why Distractor D fails:** Static CSV exports in Dialogflow CX cannot perform real-time transactional SQL queries, schema updates, or dynamic database analytics required for a coding agent.
+  * **Why it's correct:** `AgentTool` runs the child agent as a tool call. Its trial-and-error loop and large payloads stay inside its own execution, and the root receives only the final result. It also lets the child use a different, cheaper model (model tiering).
+  * **Why Distractor B fails:** Model tiering is achieved, but transferred sub-agents share the session's event history, so all the attempts and large results still accumulate in the conversation the root sees.
+  * **Why Distractor C fails:** Tool responses are added to the model's context when the tool returns, regardless of where the data is also stored in state, so the root's context still grows.
+  * **Why Distractor D fails:** It postpones the problem and raises cost; quality still degrades as the context fills with irrelevant intermediate data.
 
 ---
 
-### **Question 2 (Domain 2)**
+### **Question 4 (Domain 2 - `agents-cli` Workflow)**
 
-**Context:** A data engineering team deploys a self-hosted **MCP Toolbox for Databases** server on Cloud Run. The server exposes over 40 individual schema inspection, SQL formatting, and table querying tools. Developers notice that when loading the full MCP server into their ADK agent, prompt context windows become bloated with dozens of unneeded tool JSON schemas, increasing token billing and causing reasoning drift.
+A team of 12 developers is starting a new ADK agent using Antigravity and Claude Code. Their coding assistants keep generating outdated ADK APIs. The team wants to prototype and test conversations locally for a few weeks before committing to any cloud infrastructure, and later add Cloud Run deployment with CI/CD to the same project.
 
-**Goal:** Reduce prompt context bloat while maintaining developer access to required database query tools.
+**Which sequence should the team follow?**
 
-**Constraints:**
-* Must strictly enforce the principle of least privilege regarding exposed tool schemas.
-* Must prevent loading all 40+ schemas into the agent's main context window on every turn.
-
-**Which approach should you implement in ADK?**
-
-* **A.** Apply a `tool_filter` allowlist parameter inside `McpToolset` to expose only the specific tools required by that agent (e.g., `tool_filter=["query_sales_db", "get_schema_summary"]`).
-* **B.** Switch the base LLM model to Gemini 1.5 Pro and enable model context caching across all 40 tool schemas.
-* **C.** Convert all 40 MCP tools into static system instructions embedded in the agent's system prompt.
-* **D.** Deploy a Model Armor template with Sensitive Data Protection (SDP) rules to strip tool schemas from incoming prompts.
+* **A.** Run `uvx google-agents-cli setup`, create the project with `agents-cli create --prototype`, iterate with `agents-cli playground`, and later deploy the prototype with `agents-cli deploy -d cloud_run`.
+* **B.** Create the project with `agents-cli create -d cloud_run` so the Dockerfile, Terraform and Cloud Build files exist from the start, and test each change by deploying it to a staging service.
+* **C.** Run `uvx google-agents-cli setup`, create the project with `agents-cli create --prototype`, iterate with `agents-cli playground`, and later run `agents-cli scaffold enhance -d cloud_run` before deploying.
+* **D.** Install `google-adk` with `pip`, add the current ADK documentation to each repository's assistant instruction file, and test locally with the ADK web UI.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** `McpToolset` in ADK supports the `tool_filter` parameter. This allows developers to allowlist only the exact subset of tool functions required for the agent's specific role, preventing context window bloat and eliminating unneeded token costs while adhering to least privilege access.
-  * **Why Distractor B fails:** Context caching reduces latency for fixed prompt prefixes but does not prevent schema overload from cluttering the model's active function-calling choices and causing reasoning drift.
-  * **Why Distractor C fails:** Embedding raw JSON schemas in system instructions consumes context tokens just like tool declarations and removes native tool-calling validation.
-  * **Why Distractor D fails:** Model Armor sanitizes PII and inspects safety/injection risks; it cannot filter or manage MCP tool schema definitions in application code.
+* **Correct Answer: C**
+  * **Why it's correct:** `setup` installs the CLI and injects the ADK skills into the developers' coding assistants, which fixes the outdated-API problem. `create --prototype` and `playground` support local iteration with no cloud infrastructure, and `scaffold enhance` later adds the Dockerfile, Terraform and CI/CD for Cloud Run to the existing project.
+  * **Why Distractor A fails:** A prototype project has no deployment infrastructure. The `scaffold enhance` step is needed to add the Cloud Run files before deploying.
+  * **Why Distractor B fails:** It commits to cloud infrastructure from day one and slows iteration, because every test needs a deployment. It also does not fix the coding assistants' outdated APIs.
+  * **Why Distractor D fails:** Copying documentation into each repository is manual and goes stale, and it provides none of the CLI's scaffolding, evaluation or deployment workflows.
 
 ---
 
-### **Question 3 (Domain 2 & Domain 3)**
+### **Question 5 (Domain 2 - Data Agent Kit)**
 
-**Context:** You are designing a complex data analysis agent using ADK. The agent must execute SQL queries across 16 AlloyDB instances, process raw database outputs, and run iterative, multi-step trial-and-error reasoning loops to transform the retrieved data.
+Data engineers at a financial services firm want their VS Code coding assistant to write BigQuery SQL, build dbt models, and submit Dataproc jobs. Today they paste table schemas into the chat by hand. The platform team has proposed building a custom MCP server that wraps the BigQuery and Dataproc APIs. Management wants the option that requires the least building and maintenance while covering all these data services.
 
-**Goal:** Select the tool architecture that prevents intermediate trial-and-error execution logs and massive SQL output payloads from cluttering the root orchestrator's context window.
+**What should you do?**
 
-**Constraints:**
-* The root orchestrator's context window must remain clean and focused on user interaction.
-* Must enable **model tiering** (e.g., using Gemini Flash for low-cost query execution sub-agents and Gemini Pro for root orchestrator reasoning).
-
-**Which design pattern should you recommend?**
-
-* **A.** Wrap the specialized database sub-agent as an `AgentTool` (Agent-as-a-Tool) attached to the root orchestrator agent.
-* **B.** Attach all 16 AlloyDB connection functions directly as Custom Python Function Tools on the root orchestrator agent.
-* **C.** Hardcode the 16 AlloyDB connection strings in system prompts and run `stdio` subprocess loops.
-* **D.** Build a `ParallelAgent` workflow where all 16 instances are queried simultaneously on every turn regardless of user intent.
+* **A.** Deploy MCP Toolbox for Databases with a BigQuery source, and connect the coding assistant to it for schema discovery and query execution.
+* **B.** Install Data Agent Kit in the developers' IDE and coding-assistant environment to add Google's prebuilt data skills and MCP toolboxes.
+* **C.** Approve the custom MCP server on Cloud Run that wraps the BigQuery, dbt and Dataproc APIs, and register it in each developer's assistant configuration.
+* **D.** Allow the coding assistant to run `bq` and `gcloud dataproc` commands in the terminal using each developer's own credentials, with a read-only role on production datasets.
 
 ---
 
 #### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Wrapping a specialized sub-agent inside an `AgentTool` isolates the sub-agent's execution loop. All intermediate reasoning, trial-and-error retries, and raw database payloads stay inside the sub-agent's own context window, returning only the final synthesized result to the root orchestrator. This also enables model tiering (e.g., Gemini Flash for the sub-agent tool, Gemini Pro for the root).
-  * **Why Distractor B fails:** Attaching all functions directly to the root orchestrator forces all raw database payloads, error tracebacks, and schema schemas into the root context window, causing rapid token bloat and increasing cost.
-  * **Why Distractor C fails:** Hardcoding connection strings violates security guidelines and does not isolate reasoning loops.
-  * **Why Distractor D fails:** Querying all 16 databases simultaneously on every turn causes massive unnecessary latency, database load, and token waste.
-
----
-
-### **Question 4 (Domain 2 & Domain 4)**
-
-**Context:** An engineering team is adopting `agents-cli` to standardize building, testing, evaluating, and deploying ADK coding agents across local IDEs (VS Code/Antigravity) and Google Cloud.
-
-**Goal:** Set up `agents-cli` in the local development environment and automatically equip developer coding assistants with specialized skills for ADK code patterns, evaluation, and deployment workflows.
-
-**Constraints:**
-* Must install the CLI toolchain and register context-aware skills without manually copying Markdown prompt files into each developer's IDE directory.
-* Must support rapid local prototyping with interactive testing before deploying infrastructure to Google Cloud.
-
-**Which command workflow should you execute?**
-
-* **A.** Run `uvx google-agents-cli setup` to install the CLI and register injected skills, create a prototype project with `agents-cli create --prototype`, and test locally using `agents-cli playground`.
-* **B.** Run `gcloud builds submit` to build a container image, deploy directly to GKE, and inspect pod stdout logs.
-* **C.** Create a Cloud Shell environment and run `pip install google-adk` manually on every developer workspace restart.
-* **D.** Import the `agents-cli-manifest.yaml` file into the Dialogflow CX Console as a custom entity type.
-
----
-
-#### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** Running `uvx google-agents-cli setup` automatically installs `agents-cli` and injects the 7 context-aware developer skills (scaffolding, ADK coding, evaluation, deployment, etc.) into detected IDEs. `agents-cli create --prototype` creates a minimal project, and `agents-cli playground` launches a local web UI for instant hot-reloading tests before committing to cloud deployments.
-  * **Why Distractor B fails:** Deploying to GKE before local prototyping adds heavy infrastructure overhead and slows down the development iteration cycle.
-  * **Why Distractor C fails:** Manual `pip install` in Cloud Shell does not inject the CLI developer skills into local IDE coding assistants.
-  * **Why Distractor D fails:** `agents-cli-manifest.yaml` is a project configuration manifest for coding agents, not an entity schema for Dialogflow CX.
-
----
-
-### **Question 5 (Domain 2)**
-
-**Context:** Data engineers at a financial services firm want to equip IDE coding assistants (VS Code / Antigravity) with capabilities to query schema structures, construct SQL queries, and orchestrate analytics pipelines across BigQuery, Spanner, Dataproc, and Cloud Storage.
-
-**Goal:** Enable natural language data engineering tools in the IDE without forcing developers to manually copy-paste massive DDL table schemas into prompt windows.
-
-**Constraints:**
-* Must leverage Google's open-source extension and skill pack built specifically for data engineering and analytics IDE workflows.
-* Must seamlessly bridge IDE coding agents to Google Cloud Data Cloud services via MCP toolboxes and data skills.
-
-**Which product or plugin should you integrate into the development environment?**
-
-* **A.** Install and configure the **Data Agent Kit (DAK)** plugin in the IDE / CLI coding assistant environment.
-* **B.** Configure a Dialogflow CX Generator with custom entity types for every BigQuery column.
-* **C.** Grant the coding agent execution rights to run raw `bq` CLI commands via unconstrained local bash execution tools.
-* **D.** Set up a Vertex AI Search Web Data Store pointing to public SQL documentation.
-
----
-
-#### **Answer & Explanation**
-* **Correct Answer: A**
-  * **Why it's correct:** **Data Agent Kit (DAK)** is Google Cloud's open-source plugin and skill pack designed specifically for data engineers and data scientists. It equips IDE/CLI coding agents with pre-built data skills and MCP toolboxes that bridge natural language prompts directly to 20+ Google Data Cloud services (BigQuery, Spanner, Dataproc, dbt), eliminating manual schema copy-pasting.
-  * **Why Distractor B fails:** Dialogflow CX Generators are for conversational chatbots, not IDE-based data engineering coding agents.
-  * **Why Distractor C fails:** Giving an agent unconstrained raw bash access to run `bq` CLI without structured schema tools or guardrails creates severe security and command-injection risks.
-  * **Why Distractor D fails:** Public SQL documentation provides generic syntax examples but cannot inspect internal corporate database schemas or execute data pipelines.
-
----
+* **Correct Answer: B**
+  * **Why it's correct:** Data Agent Kit is Google's open-source extension and skill pack for data engineering in IDEs and CLI coding agents. It covers BigQuery, Spanner, Dataproc, dbt and other Data Cloud services with prebuilt skills and MCP toolboxes, so there is nothing to build or operate.
+  * **Why Distractor A fails:** Toolbox helps with database schema discovery and queries, but it does not provide the dbt and Dataproc pipeline skills the engineers need.
+  * **Why Distractor C fails:** It would work, but it is exactly the custom build-and-maintain effort management wants to avoid.
+  * **Why Distractor D fails:** Raw CLI access gives the assistant no structured schema context or data skills, and letting an assistant run arbitrary commands with personal credentials is hard to govern.

@@ -86,13 +86,31 @@
   };
 
   const topicOf = (q) => { const m = q.header.match(/\s[-–]\s(.+)$/); return m ? m[1] : ''; };
-  const lastResults = () => store.get('last', {}); // qid -> boolean (last attempt correct?)
+  /** Per-question record on this device: qid -> { n: attempts, ok: correct attempts, last: bool, at: ms }. */
+  function questionStats() {
+    const st = store.get('stats', {});
+    const legacy = store.get('last', null); // older versions kept only the last result per question
+    if (legacy) {
+      Object.entries(legacy).forEach(([id, ok]) => { if (!st[id]) st[id] = { n: 1, ok: ok ? 1 : 0, last: ok, at: 0 }; });
+      store.set('stats', st);
+      store.del('last');
+    }
+    return st;
+  }
+  const lastResults = () => Object.fromEntries(Object.entries(questionStats()).map(([id, r]) => [id, r.last])); // qid -> last attempt correct?
   const mistakeIds = () => Object.entries(lastResults()).filter(([id, ok]) => !ok && QMAP[id]).map(([id]) => id);
 
   function recordOutcome(id, ok) {
-    const last = lastResults();
-    last[id] = ok;
-    store.set('last', last);
+    const st = questionStats();
+    const r = st[id] || { n: 0, ok: 0 };
+    st[id] = { n: r.n + 1, ok: r.ok + (ok ? 1 : 0), last: ok, at: Date.now() };
+    store.set('stats', st);
+  }
+
+  function recordChip(id) {
+    const r = questionStats()[id];
+    if (!r) return '<span class="chip">First attempt</span>';
+    return `<span class="chip ${r.last ? 'chip-good' : 'chip-bad'}" title="Your attempts at this question on this device">Your record: ${r.ok}/${r.n} correct</span>`;
   }
 
   /* ---------- narrator ---------- */
@@ -107,7 +125,7 @@
     const RATES = [1, 1.25, 1.5, 0.85];
     const audio = new Audio();
     audio.preload = 'auto';
-    let queue = [], pos = 0, current = null, rate = store.get('rate', 1);
+    let queue = [], pos = 0, current = null, lastId = null, rate = store.get('rate', 1);
 
     const has = (key) => !!clips[key];
     const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5Z"/></svg>';
@@ -168,7 +186,7 @@
         return;
       }
       stop();
-      current = b.dataset.sayId;
+      current = lastId = b.dataset.sayId;
       queue = playlist(b);
       playAt(0);
     }
@@ -200,7 +218,16 @@
       if (e.target.closest('.btn-rate')) { e.preventDefault(); cycleRate(); }
     });
 
-    return { enabled, button, rateButton, stop, sync, clickListen };
+    /** Restarts the playing (or last played) narration from the top; falls back to `fallbackId`. */
+    function replay(fallbackId) {
+      const id = [current, lastId].find((x) => x && $(`.btn-listen[data-say-id="${x}"]`)) || fallbackId;
+      const b = $(`.btn-listen[data-say-id="${id}"]`);
+      if (!b) return;
+      stop();
+      toggle(b);
+    }
+
+    return { enabled, button, rateButton, stop, sync, clickListen, replay };
   })();
 
   /* ---------- theme ---------- */
@@ -265,7 +292,7 @@
         <span class="mode-icon">${ICON.exam}</span>
         <h3>Full mock exam</h3>
         <p>All 50 questions grouped by case study. Timed, no hints until you submit.</p>
-        <span class="mode-meta"><span class="chip chip-accent">50 Q</span><span class="chip">120 min</span><span class="chip chip-ask">Leaderboard</span></span>
+        <span class="mode-meta"><span class="chip chip-accent">50 Q</span><span class="chip">120 min</span><span class="chip chip-ask">Personal best</span></span>
       </button>
       <button class="mode-card" data-mode="quick">
         <span class="mode-icon">${ICON.bolt}</span>
@@ -328,32 +355,57 @@
         <div class="meter"><i style="width:${(info.weight / 33) * 100}%"></i></div></div>`;
     }).join('');
 
-    // history
+    // history, with the change against the previous attempt in the same mode
     const hist = store.get('history', []);
     $('#history').innerHTML = hist.length
-      ? hist.slice(0, 6).map((h) => `<div class="history-row"><span>${esc(h.title)}<br><span class="muted small">${new Date(h.date).toLocaleDateString()} · ${fmtTime(h.elapsedSec)}</span></span>
-          <span class="chip ${h.pct >= PASS_PCT ? 'chip-good' : 'chip-bad'}">${h.correct}/${h.total} · ${h.pct}%</span></div>`).join('')
+      ? hist.slice(0, 8).map((h, i) => {
+        const prev = hist.slice(i + 1).find((p) => p.mode === h.mode && p.arg === h.arg);
+        const d = prev ? h.pct - prev.pct : null;
+        const delta = d === null ? '' : `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '='}${d ? Math.abs(d) : ''}</span>`;
+        return `<div class="history-row"><span>${esc(h.title)}<br><span class="muted small">${new Date(h.date).toLocaleDateString()} · ${fmtTime(h.elapsedSec)}</span></span>
+          <span class="history-score">${delta}<span class="chip ${h.pct >= PASS_PCT ? 'chip-good' : 'chip-bad'}">${h.correct}/${h.total} · ${h.pct}%</span></span></div>`;
+      }).join('')
       : '<p class="muted small" style="margin:0">Your attempts on this device will appear here.</p>';
 
-    renderBoard($('#home-leaderboard'));
+    renderProgress();
     show('home');
   }
 
-  async function renderBoard(el, highlight) {
-    el.innerHTML = '<p class="muted small" style="margin:0">Loading…</p>';
-    const rows = await ExamBoard.fetchTop(10);
-    if (rows === null) {
-      el.innerHTML = '<p class="muted small" style="margin:0">The leaderboard is offline. It works when the app is served from Firebase Hosting or the emulator.</p>';
+  const bestScore = (hist, mode) => hist.filter((h) => h.mode === mode).reduce((m, h) => Math.max(m, h.pct), -1);
+
+  function renderProgress() {
+    const st = questionStats();
+    const ids = DATA.questions.map((q) => q.id);
+    const seen = ids.filter((id) => st[id]);
+    const attempts = seen.reduce((n, id) => n + st[id].n, 0);
+    const correct = seen.reduce((n, id) => n + st[id].ok, 0);
+    const mastered = ids.filter((id) => st[id]?.last).length;
+    const best = bestScore(store.get('history', []), 'full');
+    const kpi = (v, l) => `<div><b>${v}</b><span>${l}</span></div>`;
+    const el = $('#my-progress');
+    if (!seen.length) {
+      el.innerHTML = '<p class="muted small" style="margin:0">Answer a few questions and your progress shows up here: accuracy, mastered questions and weak domains.</p>';
       return;
     }
-    if (!rows.length) {
-      el.innerHTML = '<p class="muted small" style="margin:0">No scores yet. Finish a full mock exam to set the first one.</p>';
-      return;
-    }
-    el.innerHTML = `<table class="lb-table"><thead><tr><th>#</th><th>Name</th><th class="num">Score</th><th class="num">Time</th></tr></thead><tbody>
-      ${rows.map((r, i) => `<tr class="${i === 0 ? 'top1' : ''} ${highlight && r.name === highlight.name && r.correct === highlight.correct ? 'me' : ''}">
-        <td>${i + 1}</td><td class="lb-name">${esc(r.name)}</td><td class="num">${Number(r.scorePct) || 0}%</td><td class="num">${fmtTime(Number(r.durationSec) || 0)}</td></tr>`).join('')}
-      </tbody></table>`;
+    const byDomain = Object.keys(DOMAINS).map((d) => {
+      const qs = DATA.questions.filter((q) => q.domains.includes(Number(d)));
+      return { label: `D${d} · ${esc(DOMAINS[d].name)}`, ok: qs.filter((q) => st[q.id]?.last).length, n: qs.length };
+    });
+    el.innerHTML = `
+      <div class="progress-kpis">
+        ${kpi(`${seen.length}/${ids.length}`, 'seen')}
+        ${kpi(`${mastered}`, 'mastered')}
+        ${kpi(`${Math.round((correct / attempts) * 100)}%`, 'accuracy')}
+        ${kpi(best >= 0 ? `${best}%` : '—', 'best full exam')}
+      </div>
+      <p class="muted small">Mastered = correct on your latest attempt. Accuracy is across all ${attempts} attempt${attempts > 1 ? 's' : ''}.</p>
+      ${breakdownRows(byDomain)}
+      <button class="btn btn-ghost btn-small" id="btn-reset" type="button">Reset my progress</button>`;
+    $('#btn-reset').onclick = () => {
+      if (!confirm('Delete your question history, attempts and mistakes on this device?')) return;
+      ['stats', 'last', 'history', 'session'].forEach((k) => store.del(k));
+      renderHome();
+    };
   }
 
   /* ================= SESSION ================= */
@@ -543,7 +595,7 @@
         ${flagged ? '<span class="chip chip-ask">Flagged</span>' : ''}
         ${audioRow(item.id, item.order, revealed)}
       </div>`;
-    if (revealed && topicOf(q)) h += `<div class="q-topic">Topic: ${inline(topicOf(q))}</div>`;
+    if (revealed) h += `<div class="q-topic">${topicOf(q) ? `<span>Topic: ${inline(topicOf(q))}</span>` : ''}${recordChip(item.id)}</div>`;
     h += questionHTML(q, item.order, { selected, revealed, disabled: revealed });
 
     if (revealed) {
@@ -551,10 +603,13 @@
       h += `<div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? '✓ Correct.' : `✕ Not quite. The answer is ${LETTERS[item.order.indexOf(q.answer)]}.`}${ok && S.streak > 1 ? ` That's ${S.streak} in a row.` : ''}</div>`;
     }
 
+    // Enter always triggers the primary button; Next stays available to skip a practice question.
+    const nextBtn = (cls) => (isLast
+      ? `<button class="btn ${cls}" data-act="finish">${S.practice ? 'See summary' : 'Review & submit'}</button>`
+      : `<button class="btn ${cls}" data-act="next">Next →</button>`);
     let primary;
-    if (S.practice && !revealed) primary = `<button class="btn btn-primary" data-act="check" ${selected ? '' : 'disabled'}>Check answer</button>`;
-    else if (isLast) primary = `<button class="btn btn-primary" data-act="finish">${S.practice ? 'See summary' : 'Review & submit'}</button>`;
-    else primary = `<button class="btn btn-primary" data-act="next">Next</button>`;
+    if (S.practice && !revealed) primary = `<button class="btn btn-primary" data-act="check" ${selected ? '' : 'disabled'}>Submit answer</button>${nextBtn('btn-ghost')}`;
+    else primary = nextBtn('btn-primary');
 
     h += `<div class="q-foot">
         <button class="btn btn-ghost" data-act="prev" ${S.idx === 0 ? 'disabled' : ''}>← Previous</button>
@@ -563,7 +618,7 @@
           ${primary}
         </div>
       </div>
-      <p class="kbd-hint"><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> ${S.practice ? 'check / next' : 'next'} · <kbd>←</kbd><kbd>→</kbd> move · <kbd>F</kbd> flag${Narrator.enabled ? ` · <kbd>L</kbd> listen${revealed ? ' · <kbd>E</kbd> explanations' : ''}` : ''}</p>`;
+      <p class="kbd-hint"><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> ${S.practice ? (revealed ? 'next' : 'submit') : 'next'} · <kbd>N</kbd> / <kbd>→</kbd> next · <kbd>←</kbd> previous · <kbd>F</kbd> flag${Narrator.enabled ? ` · <kbd>L</kbd> listen${revealed ? ' · <kbd>E</kbd> explanations' : ''} · <kbd>R</kbd> replay audio` : ''}</p>`;
 
     const card = $('#question-card');
     card.innerHTML = h;
@@ -706,11 +761,12 @@
       mode: S.mode, arg: S.arg, title: S.title, practice: S.practice, timedOut,
       total: items.length, correct, pct: Math.round((correct / items.length) * 100),
       elapsedSec: Math.round(S.elapsedMs / 1000), items, flags: S.flags.slice(), bestStreak: S.bestStreak,
-      ranked: S.mode === 'full' && items.length === 50,
     };
     const hist = store.get('history', []);
-    hist.unshift({ date: Date.now(), title: S.title, mode: S.mode, correct, total: result.total, pct: result.pct, elapsedSec: result.elapsedSec });
-    store.set('history', hist.slice(0, 20));
+    result.prev = hist.find((h) => h.mode === S.mode && h.arg === S.arg) || null;
+    result.best = bestScore(hist, S.mode);
+    hist.unshift({ date: Date.now(), title: S.title, mode: S.mode, arg: S.arg, correct, total: result.total, pct: result.pct, elapsedSec: result.elapsedSec });
+    store.set('history', hist.slice(0, 50));
 
     S = null;
     renderResults(result);
@@ -768,6 +824,8 @@
             <div><b>${r.items.filter((i) => !i.selected).length}</b><span>unanswered</span></div>
             <div><b>${r.flags.length}</b><span>flagged</span></div>
             ${r.practice ? `<div><b>${r.bestStreak}</b><span>best streak</span></div>` : ''}
+            ${r.prev ? `<div><b>${r.pct - r.prev.pct > 0 ? '+' : ''}${r.pct - r.prev.pct} pts</b><span>vs last time (${r.prev.pct}%)</span></div>` : ''}
+            ${r.best >= 0 ? `<div><b>${r.pct > r.best ? 'New best' : `${r.best}%`}</b><span>${r.pct > r.best ? `was ${r.best}%` : 'personal best'}</span></div>` : ''}
           </div>
         </div>
       </div>
@@ -777,18 +835,6 @@
         <div class="card"><h2 class="section-title" style="margin-top:0">By case study</h2>${breakdownRows(byScenario)}</div>
       </div>
 
-      ${r.ranked ? `<div class="results-grid">
-        <div class="card">
-          <h2 class="section-title" style="margin-top:0">Post your score</h2>
-          <p class="muted small">Pick a nickname from 3 to 12 characters (letters, digits, <code>_</code> or <code>-</code>). The leaderboard is public.</p>
-          <form class="submit-form" id="submit-form">
-            <input id="nick" maxlength="12" autocomplete="off" placeholder="nickname" value="${esc(store.get('nick', ''))}" pattern="[A-Za-z0-9_\\-]{3,12}" required>
-            <button class="btn btn-primary" type="submit">Submit ${r.pct}%</button>
-          </form>
-          <div class="form-msg" id="submit-msg"></div>
-        </div>
-        <div class="card"><h2 class="section-title" style="margin-top:0">Leaderboard</h2><div id="results-board"></div></div>
-      </div>` : ''}
 
       <div class="review-head">
         <h2 class="section-title">Review answers</h2>
@@ -821,7 +867,7 @@
         return `<details class="review-item">
           <summary>${mark}<span class="review-title">Q${n}. ${inline(topicOf(q) || q.prompt)}<small>Case study ${q.scenario}: ${esc(SMAP[q.scenario].title)}</small></span>
             ${r.flags.includes(it.id) ? '<span class="chip chip-ask">Flagged</span>' : '<span></span>'}</summary>
-          <div class="review-body" data-qscope="${q.id}">${Narrator.enabled ? `<div class="audio-row">${audioRow(q.id, it.order, true)}</div>` : ''}${questionHTML(q, it.order, { selected: it.selected, revealed: true, disabled: true })}</div>
+          <div class="review-body" data-qscope="${q.id}"><div class="audio-row">${recordChip(q.id)}${audioRow(q.id, it.order, true)}</div>${questionHTML(q, it.order, { selected: it.selected, revealed: true, disabled: true })}</div>
         </details>`;
       }).join('') : '<p class="muted">Nothing to show for this filter.</p>';
       Narrator.stop();
@@ -841,35 +887,6 @@
       if (act === 'again') startSession(r.mode, r.arg);
     };
 
-    if (r.ranked) {
-      renderBoard($('#results-board'));
-      $('#submit-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = $('#nick').value.trim();
-        const msg = $('#submit-msg');
-        if (!/^[A-Za-z0-9_-]{3,12}$/.test(name)) {
-          msg.className = 'form-msg err';
-          msg.textContent = 'Use 3–12 letters, digits, _ or -.';
-          return;
-        }
-        const btn = e.target.querySelector('button');
-        btn.disabled = true;
-        msg.className = 'form-msg';
-        msg.textContent = 'Submitting…';
-        const res = await ExamBoard.submit({ name, correct: r.correct, durationSec: r.elapsedSec });
-        if (res.ok) {
-          store.set('nick', name);
-          msg.className = 'form-msg ok';
-          msg.textContent = 'Score posted.';
-          e.target.hidden = true;
-          renderBoard($('#results-board'), { name, correct: r.correct });
-        } else {
-          btn.disabled = false;
-          msg.className = 'form-msg err';
-          msg.textContent = res.error;
-        }
-      });
-    }
   }
 
   /* ---------- keyboard ---------- */
@@ -882,17 +899,19 @@
       e.preventDefault();
       select(S.items[S.idx].order[idx]);
     } else if (k === 'enter') {
-      if (e.target.closest('button')) return; // let the focused button handle it
+      // Always the primary action, even when a button (e.g. Listen) still has focus. Space activates the focused button.
       e.preventDefault();
       const id = S.items[S.idx].id;
       if (S.practice && !S.checked[id]) { if (S.answers[id]) check(); }
       else if (S.idx < S.items.length - 1) go(S.idx + 1);
       else requestFinish();
     } else if (k === 'arrowright') { go(S.idx + 1); }
+    else if (k === 'n') { if (S.idx < S.items.length - 1) go(S.idx + 1); else requestFinish(); }
     else if (k === 'arrowleft') { go(S.idx - 1); }
     else if (k === 'f') { toggleFlag(); }
     else if (k === 'l') { Narrator.clickListen(`q:${S.items[S.idx].id}`); }
     else if (k === 'e') { Narrator.clickListen(`x:${S.items[S.idx].id}`); }
+    else if (k === 'r') { e.preventDefault(); Narrator.replay(`q:${S.items[S.idx].id}`); }
     else if (k === 'escape') { $('#navigator').hidden = true; }
   });
 
